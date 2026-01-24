@@ -1,0 +1,123 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  passwordHash  String
+  role          String    @default("PLAYER") // ADMIN, PLAYER
+  playerType    String    @default("TEAM") // TEAM, GUEST
+  isActive      Boolean   @default(true)
+  isArchived    Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  hostedSessions    Session[]       @relation("HostedSessions")
+  sessionPlayers    SessionPlayer[]
+  sentInvitations   Invitation[]    @relation("SentInvitations")
+  soldBuyIns        BuyInTransfer[] @relation("SoldBuyIns")
+  boughtBuyIns      BuyInTransfer[] @relation("BoughtBuyIns")
+  specialHands      SpecialHand[]
+
+  @@map("users")
+}
+
+model Session {
+  id          String    @id @default(cuid())
+  date        DateTime  @default(now())
+  status      String    @default("ACTIVE") // ACTIVE, CLOSED
+  hostId      String
+  totalPot    Int       @default(0)
+  notes       String?
+  closedAt    DateTime?
+  isArchived  Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  host         User            @relation("HostedSessions", fields: [hostId], references: [id])
+  players      SessionPlayer[]
+  transfers    BuyInTransfer[]
+  specialHands SpecialHand[]
+
+  @@map("sessions")
+}
+
+model SessionPlayer {
+  id          String    @id @default(cuid())
+  sessionId   String
+  userId      String
+  buyInCount  Int       @default(0)
+  chipsSold   Int       @default(0) // Extra cash from selling chips (added to cashout)
+  cashOut     Int?
+  joinedAt    DateTime  @default(now())
+  leftAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id])
+
+  @@unique([sessionId, userId])
+  @@map("session_players")
+}
+
+model Invitation {
+  id          String    @id @default(cuid())
+  email       String
+  name        String
+  token       String    @unique
+  status      String    @default("PENDING") // PENDING, ACCEPTED, EXPIRED
+  expiresAt   DateTime
+  invitedById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  invitedBy User @relation("SentInvitations", fields: [invitedById], references: [id])
+
+  @@map("invitations")
+}
+
+model BuyInTransfer {
+  id          String    @id @default(cuid())
+  sessionId   String
+  sellerId    String
+  buyerId     String
+  amount      Int       @default(10)
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  session     Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  seller      User    @relation("SoldBuyIns", fields: [sellerId], references: [id])
+  buyer       User    @relation("BoughtBuyIns", fields: [buyerId], references: [id])
+
+  @@map("buy_in_transfers")
+}
+
+// Special hands that earn an asterisk (*) - Royal Four of a Kind and above
+model SpecialHand {
+  id          String    @id @default(cuid())
+  sessionId   String
+  playerId    String
+  handType    String    // FOUR_OF_A_KIND_ROYALS, STRAIGHT_FLUSH, ROYAL_FLUSH
+  cards       String    // JSON string describing the hand, e.g., "KKKK" or "10-J-Q-K-A hearts"
+  description String?   // Optional description of the hand
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  session     Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  player      User    @relation(fields: [playerId], references: [id])
+
+  @@map("special_hands")
+}
