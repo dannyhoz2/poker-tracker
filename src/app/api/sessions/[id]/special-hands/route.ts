@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { HAND_STRENGTH } from '@/lib/constants'
+import cuid from 'cuid'
 
 export async function GET(
   request: NextRequest,
@@ -76,6 +77,7 @@ export async function POST(
 
     const specialHand = await prisma.specialHand.create({
       data: {
+        id: cuid(),
         sessionId: id,
         playerId,
         handType,

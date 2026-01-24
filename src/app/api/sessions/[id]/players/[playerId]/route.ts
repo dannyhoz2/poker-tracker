@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { SESSION_STATUS, BUY_IN_AMOUNT } from '@/lib/constants'
+import cuid from 'cuid'
 
 export async function PATCH(
   request: NextRequest,
@@ -166,6 +167,7 @@ export async function PATCH(
         // Record the transfer
         const transfer = await tx.buyInTransfer.create({
           data: {
+            id: cuid(),
             sessionId,
             sellerId: sessionPlayer.userId,
             buyerId: buyerPlayer.userId,

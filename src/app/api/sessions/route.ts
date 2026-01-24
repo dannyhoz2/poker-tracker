@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { SESSION_STATUS, BUY_IN_AMOUNT } from '@/lib/constants'
+import cuid from 'cuid'
 
 const PIGGY_BANK_USER_ID = 'piggy-bank'
 
@@ -97,6 +98,7 @@ export async function POST(request: NextRequest) {
 
     const session = await prisma.session.create({
       data: {
+        id: cuid(),
         hostId: currentUser.id,
         notes,
       },

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { SESSION_STATUS, PLAYER_TYPE, PIGGY_BANK_CONTRIBUTION } from '@/lib/constants'
+import cuid from 'cuid'
 
 const PIGGY_BANK_USER_ID = 'piggy-bank'
 
@@ -85,6 +86,7 @@ export async function POST(
         // Create piggy bank entry for this session
         await prisma.sessionPlayer.create({
           data: {
+            id: cuid(),
             sessionId,
             userId: PIGGY_BANK_USER_ID,
             buyInCount: 0,
@@ -96,6 +98,7 @@ export async function POST(
 
     const player = await prisma.sessionPlayer.create({
       data: {
+        id: cuid(),
         sessionId,
         userId,
         buyInCount: 1, // Start with one buy-in

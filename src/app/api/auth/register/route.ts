@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import prisma from '@/lib/prisma'
 import { hashPassword, generateToken } from '@/lib/auth'
 import { INVITATION_STATUS } from '@/lib/constants'
+import cuid from 'cuid'
 
 export async function POST(request: NextRequest) {
   try {
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.user.create({
       data: {
+        id: cuid(),
         email: email.toLowerCase(),
         name,
         passwordHash,

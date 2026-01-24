@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getCurrentUser, generateInviteToken } from '@/lib/auth'
 import { USER_ROLE, INVITATION_STATUS, INVITATION_EXPIRY_DAYS } from '@/lib/constants'
+import cuid from 'cuid'
 
 export async function GET() {
   try {
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
 
     const invitation = await prisma.invitation.create({
       data: {
+        id: cuid(),
         email: email.toLowerCase(),
         name,
         token,
