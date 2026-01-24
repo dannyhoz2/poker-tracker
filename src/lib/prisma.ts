@@ -2,6 +2,11 @@ import { PrismaClient } from '@prisma/client'
 import { PrismaLibSQL } from '@prisma/adapter-libsql'
 import { createClient } from '@libsql/client'
 
+// Set a dummy DATABASE_URL if not set (required for Prisma validation even with adapters)
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = 'file:./placeholder.db'
+}
+
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
