@@ -14,14 +14,22 @@ const globalForPrisma = globalThis as unknown as {
 function createPrismaClient(): PrismaClient {
   const tursoUrl = process.env.TURSO_DATABASE_URL
   const tursoToken = process.env.TURSO_AUTH_TOKEN
+  const isProduction = process.env.NODE_ENV === 'production'
 
-  // Log for debugging (remove in production later)
+  console.log('Prisma init - NODE_ENV:', process.env.NODE_ENV)
   console.log('Prisma init - TURSO_DATABASE_URL exists:', !!tursoUrl)
   console.log('Prisma init - TURSO_AUTH_TOKEN exists:', !!tursoToken)
 
-  // Use Turso when environment variables are set
-  if (tursoUrl && tursoToken) {
-    console.log('Prisma init - Using Turso adapter')
+  // In production, always try to use Turso
+  if (isProduction || (tursoUrl && tursoToken)) {
+    if (!tursoUrl || !tursoToken) {
+      console.error('Prisma init - Production mode but Turso credentials missing!')
+      console.error('TURSO_DATABASE_URL:', tursoUrl ? 'SET' : 'NOT SET')
+      console.error('TURSO_AUTH_TOKEN:', tursoToken ? 'SET' : 'NOT SET')
+      throw new Error('Turso credentials required in production')
+    }
+
+    console.log('Prisma init - Using Turso adapter with URL:', tursoUrl.substring(0, 30) + '...')
     const libsql = createClient({
       url: tursoUrl,
       authToken: tursoToken,
@@ -37,6 +45,9 @@ function createPrismaClient(): PrismaClient {
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient()
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+// Cache in development only
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma
+}
 
 export default prisma
