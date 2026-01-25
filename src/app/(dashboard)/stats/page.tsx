@@ -67,6 +67,7 @@ interface StatsData {
   cumulativeData: Array<{ date: string; [key: string]: number | string }>
   asteriskStats: AsteriskStats[]
   specialHandsDetails: SpecialHandDetail[]
+  piggyBankTotal: number
 }
 
 const COLORS = [
@@ -445,14 +446,19 @@ export default function StatsPage() {
 
       {/* Asterisk Leaderboard */}
       <Card className="border-amber-700/50 bg-gradient-to-br from-amber-900/20 to-gray-900">
-        <div className="flex items-center gap-2 mb-4">
-          <span className="text-amber-400 text-2xl">*</span>
-          <h3 className="text-lg font-semibold text-gray-100">
-            Asterisk Leaderboard
-          </h3>
-          <span className="text-sm text-gray-400 ml-2">
-            (Piggy Bank Prize)
-          </span>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <div className="flex items-center gap-2">
+            <span className="text-amber-400 text-2xl">*</span>
+            <h3 className="text-lg font-semibold text-gray-100">
+              Asterisk Leaderboard
+            </h3>
+          </div>
+          <div className="flex items-center gap-2 px-4 py-2 bg-amber-900/30 rounded-lg border border-amber-700/50">
+            <span className="text-sm text-gray-400">Piggy Bank Total:</span>
+            <span className="text-xl font-bold text-amber-400">
+              ${stats?.piggyBankTotal ?? 0}
+            </span>
+          </div>
         </div>
         <p className="text-sm text-gray-400 mb-4">
           Players earn asterisks for royal four of a kind (J, Q, K, A) or above.

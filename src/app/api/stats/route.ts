@@ -4,6 +4,8 @@ import { getCurrentUser } from '@/lib/auth'
 import { SESSION_STATUS, BUY_IN_AMOUNT, PLAYER_TYPE, HAND_STRENGTH } from '@/lib/constants'
 import type { PlayerStats, AsteriskStats, SpecialHandType } from '@/types'
 
+const PIGGY_BANK_USER_ID = 'piggy-bank'
+
 export async function GET(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser()
@@ -254,6 +256,25 @@ export async function GET(request: NextRequest) {
       createdAt: hand.createdAt,
     }))
 
+    // Get piggy bank total for the year (from closed sessions in that year)
+    const piggyBankEntries = await prisma.sessionPlayer.findMany({
+      where: {
+        userId: PIGGY_BANK_USER_ID,
+        session: {
+          status: SESSION_STATUS.CLOSED,
+          date: {
+            gte: startDate,
+            lt: endDate,
+          },
+        },
+      },
+      select: {
+        cashOut: true,
+      },
+    })
+
+    const piggyBankTotal = piggyBankEntries.reduce((sum, entry) => sum + (entry.cashOut || 0), 0)
+
     return NextResponse.json({
       year,
       totalSessions,
@@ -262,6 +283,7 @@ export async function GET(request: NextRequest) {
       cumulativeData,
       asteriskStats,
       specialHandsDetails,
+      piggyBankTotal,
     })
   } catch (error) {
     console.error('Get stats error:', error)
