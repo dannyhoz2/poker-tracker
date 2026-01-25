@@ -111,16 +111,9 @@ export async function PATCH(
 
     const { action, notes, date, isArchived } = await request.json()
 
-    // Admins can reopen/archive any session, hosts can only modify their own
-    if (action === 'reopen' || action === 'archive' || typeof isArchived === 'boolean') {
-      if (!isHost && !isAdmin) {
-        return NextResponse.json({ error: 'Only the host or admin can modify this session' }, { status: 403 })
-      }
-    } else {
-      // For other actions (close, player management), only host can do it
-      if (!isHost) {
-        return NextResponse.json({ error: 'Only the host can modify the session' }, { status: 403 })
-      }
+    // Admins can perform all session actions, hosts can only modify their own
+    if (!isHost && !isAdmin) {
+      return NextResponse.json({ error: 'Only the host or admin can modify this session' }, { status: 403 })
     }
 
     // Handle archive action
