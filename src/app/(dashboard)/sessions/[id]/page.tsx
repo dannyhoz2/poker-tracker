@@ -151,7 +151,9 @@ export default function SessionPage() {
     }
   }
 
-  const addBuyIn = async (playerId: string) => {
+  const addBuyIn = async (playerId: string, playerName: string) => {
+    if (!confirm(`Add $10 buy-in for ${playerName}?`)) return
+
     try {
       const res = await fetch(`/api/sessions/${id}/players/${playerId}`, {
         method: 'PATCH',
@@ -167,7 +169,9 @@ export default function SessionPage() {
     }
   }
 
-  const removeBuyIn = async (playerId: string) => {
+  const removeBuyIn = async (playerId: string, playerName: string) => {
+    if (!confirm(`Remove $10 buy-in from ${playerName}?`)) return
+
     try {
       const res = await fetch(`/api/sessions/${id}/players/${playerId}`, {
         method: 'PATCH',
@@ -270,8 +274,10 @@ export default function SessionPage() {
     setIsSellBuyInOpen(true)
   }
 
-  const sellBuyIn = async (buyerUserId: string) => {
+  const sellBuyIn = async (buyerUserId: string, buyerName: string) => {
     if (!selectedPlayer) return
+
+    if (!confirm(`Sell $10 buy-in from ${selectedPlayer.user.name} to ${buyerName}?`)) return
 
     setIsSubmitting(true)
     try {
@@ -721,7 +727,7 @@ export default function SessionPage() {
                           <Button
                             size="sm"
                             variant="danger"
-                            onClick={() => removeBuyIn(player.id)}
+                            onClick={() => removeBuyIn(player.id, player.user.name)}
                           >
                             -$10
                           </Button>
@@ -738,7 +744,7 @@ export default function SessionPage() {
                         <Button
                           size="sm"
                           variant="secondary"
-                          onClick={() => addBuyIn(player.id)}
+                          onClick={() => addBuyIn(player.id, player.user.name)}
                         >
                           +$10
                         </Button>
@@ -970,7 +976,7 @@ export default function SessionPage() {
               .map((buyer) => (
                 <button
                   key={buyer.id}
-                  onClick={() => sellBuyIn(buyer.userId)}
+                  onClick={() => sellBuyIn(buyer.userId, buyer.user.name)}
                   disabled={isSubmitting}
                   className="w-full p-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-left transition-colors disabled:opacity-50"
                 >
