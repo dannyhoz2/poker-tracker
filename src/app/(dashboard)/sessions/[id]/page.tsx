@@ -653,14 +653,33 @@ export default function SessionPage() {
                       {player.user.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-medium text-gray-100">
-                        {player.user.name}
-                        {player.userId === session.hostId && (
-                          <span className="ml-2 text-xs text-emerald-400">
-                            Host
-                          </span>
-                        )}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-gray-100">
+                          {player.user.name}
+                          {player.userId === session.hostId && (
+                            <span className="ml-2 text-xs text-emerald-400">
+                              Host
+                            </span>
+                          )}
+                        </p>
+                        {/* Chip indicators */}
+                        <div className="flex items-center gap-0.5">
+                          {/* Yellow chips for buy-ins */}
+                          {Array.from({ length: player.buyInCount }).map((_, i) => (
+                            <svg key={`yellow-${i}`} className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+                              <circle cx="12" cy="12" r="10" fill="#EAB308" stroke="#CA8A04" strokeWidth="2"/>
+                              <circle cx="12" cy="12" r="6" stroke="#CA8A04" strokeWidth="1" fill="none"/>
+                            </svg>
+                          ))}
+                          {/* Green chips for sold buy-ins */}
+                          {chipsSold > 0 && Array.from({ length: Math.floor(chipsSold / BUY_IN_AMOUNT) }).map((_, i) => (
+                            <svg key={`green-${i}`} className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+                              <circle cx="12" cy="12" r="10" fill="#22C55E" stroke="#16A34A" strokeWidth="2"/>
+                              <circle cx="12" cy="12" r="6" stroke="#16A34A" strokeWidth="1" fill="none"/>
+                            </svg>
+                          ))}
+                        </div>
+                      </div>
                       <p className="text-sm text-gray-400">
                         {player.buyInCount} buy-in{player.buyInCount !== 1 ? 's' : ''}{' '}
                         (${buyInTotal})

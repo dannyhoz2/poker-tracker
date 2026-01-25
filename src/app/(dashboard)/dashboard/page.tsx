@@ -115,14 +115,7 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {activeSession ? (
-          <Link href={`/sessions/${activeSession.id}`}>
-            <Button variant="success" size="lg" className="w-full sm:w-auto">
-              <span className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse-live" />
-              Join Active Session
-            </Button>
-          </Link>
-        ) : (
+        {!activeSession && (
           <Button
             onClick={startSession}
             size="lg"
