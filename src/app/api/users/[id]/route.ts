@@ -19,7 +19,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    const { isActive, role, playerType, isArchived } = await request.json()
+    const { isActive, role, playerType, isArchived, name, email } = await request.json()
 
     // Prevent admin from deactivating themselves
     if (id === currentUser.id && isActive === false) {
@@ -37,6 +37,22 @@ export async function PATCH(
       )
     }
 
+    // Check email uniqueness if email is being changed
+    if (email) {
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          email: email.toLowerCase(),
+          id: { not: id },
+        },
+      })
+      if (existingUser) {
+        return NextResponse.json(
+          { error: 'Email is already in use by another user' },
+          { status: 400 }
+        )
+      }
+    }
+
     const user = await prisma.user.update({
       where: { id },
       data: {
@@ -44,6 +60,8 @@ export async function PATCH(
         ...(typeof isArchived === 'boolean' && { isArchived }),
         ...(role && { role }),
         ...(playerType && { playerType }),
+        ...(name && { name: name.trim() }),
+        ...(email && { email: email.toLowerCase().trim() }),
       },
       select: {
         id: true,

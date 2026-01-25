@@ -42,6 +42,10 @@ export default function AdminPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [activeTab, setActiveTab] = useState<'users' | 'archived' | 'invitations'>('users')
   const [showArchived, setShowArchived] = useState(false)
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editEmail, setEditEmail] = useState('')
 
   useEffect(() => {
     if (user?.role !== 'ADMIN') {
@@ -214,6 +218,49 @@ export default function AdminPage() {
     setInviteLink('')
   }
 
+  const openEditUser = (u: User) => {
+    setEditingUser(u)
+    setEditName(u.name)
+    setEditEmail(u.email)
+    setIsEditUserOpen(true)
+  }
+
+  const closeEditUserModal = () => {
+    setIsEditUserOpen(false)
+    setEditingUser(null)
+    setEditName('')
+    setEditEmail('')
+  }
+
+  const updateUserDetails = async () => {
+    if (!editingUser || !editName.trim() || !editEmail.trim()) {
+      alert('Please fill in all fields')
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const res = await fetch(`/api/users/${editingUser.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editName.trim(), email: editEmail.trim() }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        await fetchData()
+        closeEditUserModal()
+      } else {
+        alert(data.error || 'Failed to update user')
+      }
+    } catch (error) {
+      console.error('Failed to update user:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   // Filter users based on active tab
   const activeUsers = users.filter(u => !u.isArchived)
   const archivedUsers = users.filter(u => u.isArchived)
@@ -285,45 +332,56 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {u.id !== user?.id && (
-          <div className="flex gap-2 flex-wrap">
-            {!u.isArchived && (
-              <>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => togglePlayerType(u.id, u.playerType)}
-                  title={`Change to ${u.playerType === 'TEAM' ? 'Guest' : 'Team'}`}
-                >
-                  {u.playerType === 'TEAM' ? '→ Guest' : '→ Team'}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => toggleUserRole(u.id, u.role)}
-                >
-                  {u.role === 'ADMIN' ? '→ Player' : '→ Admin'}
-                </Button>
-              </>
-            )}
+        <div className="flex gap-2 flex-wrap">
+          {!u.isArchived && (
             <Button
               size="sm"
-              variant={u.isArchived ? 'success' : 'ghost'}
-              onClick={() => toggleArchive(u.id, u.isArchived)}
+              variant="ghost"
+              onClick={() => openEditUser(u)}
             >
-              {u.isArchived ? 'Restore' : 'Archive'}
+              Edit
             </Button>
-            {!u.isArchived && (
+          )}
+          {u.id !== user?.id && (
+            <>
+              {!u.isArchived && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => togglePlayerType(u.id, u.playerType)}
+                    title={`Change to ${u.playerType === 'TEAM' ? 'Guest' : 'Team'}`}
+                  >
+                    {u.playerType === 'TEAM' ? '→ Guest' : '→ Team'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => toggleUserRole(u.id, u.role)}
+                  >
+                    {u.role === 'ADMIN' ? '→ Player' : '→ Admin'}
+                  </Button>
+                </>
+              )}
               <Button
                 size="sm"
-                variant="danger"
-                onClick={() => deactivateUser(u.id)}
+                variant={u.isArchived ? 'success' : 'ghost'}
+                onClick={() => toggleArchive(u.id, u.isArchived)}
               >
-                Deactivate
+                {u.isArchived ? 'Restore' : 'Archive'}
               </Button>
-            )}
-          </div>
-        )}
+              {!u.isArchived && (
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={() => deactivateUser(u.id)}
+                >
+                  Deactivate
+                </Button>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </Card>
   )
@@ -532,6 +590,45 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Edit User Modal */}
+      <Modal
+        isOpen={isEditUserOpen}
+        onClose={closeEditUserModal}
+        title="Edit User"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Name"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            placeholder="Player's name"
+          />
+          <Input
+            type="email"
+            label="Email"
+            value={editEmail}
+            onChange={(e) => setEditEmail(e.target.value)}
+            placeholder="player@example.com"
+          />
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={closeEditUserModal}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={updateUserDetails}
+              isLoading={isSubmitting}
+              className="flex-1"
+            >
+              Save
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   )
