@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
-import { PLAYER_TYPE } from '@/lib/constants'
+import { SESSION_STATUS } from '@/lib/constants'
 
 const PIGGY_BANK_USER_ID = 'piggy-bank'
 
@@ -13,10 +13,14 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get all piggy bank entries across all sessions
+    // Get piggy bank entries from closed, non-archived sessions only
     const piggyBankEntries = await prisma.sessionPlayer.findMany({
       where: {
         userId: PIGGY_BANK_USER_ID,
+        session: {
+          status: SESSION_STATUS.CLOSED,
+          isArchived: false,
+        },
       },
       select: {
         cashOut: true,

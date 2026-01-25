@@ -78,7 +78,10 @@ export async function POST(
       },
     })
 
-    const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/register?token=${token}`
+    const host = request.headers.get('host') || 'localhost:3000'
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`
+    const inviteLink = `${baseUrl}/register?token=${token}`
 
     return NextResponse.json({
       invitation: updated,
