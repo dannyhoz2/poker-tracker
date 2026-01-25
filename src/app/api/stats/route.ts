@@ -21,10 +21,11 @@ export async function GET(request: NextRequest) {
     const startDate = new Date(year, 0, 1)
     const endDate = new Date(year + 1, 0, 1)
 
-    // Get all closed sessions for the year
+    // Get all closed sessions for the year (excluding archived sessions)
     const sessions = await prisma.session.findMany({
       where: {
         status: SESSION_STATUS.CLOSED,
+        isArchived: false,
         date: {
           gte: startDate,
           lt: endDate,
@@ -150,11 +151,12 @@ export async function GET(request: NextRequest) {
         cumulativeData.push(dataPoint)
       })
 
-    // Get special hands for the year (asterisks)
+    // Get special hands for the year (asterisks) - excluding archived sessions
     const specialHands = await prisma.specialHand.findMany({
       where: {
         session: {
           status: SESSION_STATUS.CLOSED,
+          isArchived: false,
           date: {
             gte: startDate,
             lt: endDate,
@@ -256,12 +258,13 @@ export async function GET(request: NextRequest) {
       createdAt: hand.createdAt,
     }))
 
-    // Get piggy bank total for the year (from closed sessions in that year)
+    // Get piggy bank total for the year (from closed, non-archived sessions in that year)
     const piggyBankEntries = await prisma.sessionPlayer.findMany({
       where: {
         userId: PIGGY_BANK_USER_ID,
         session: {
           status: SESSION_STATUS.CLOSED,
+          isArchived: false,
           date: {
             gte: startDate,
             lt: endDate,

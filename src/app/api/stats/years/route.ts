@@ -12,7 +12,7 @@ export async function GET() {
     }
 
     const sessions = await prisma.session.findMany({
-      where: { status: SESSION_STATUS.CLOSED },
+      where: { status: SESSION_STATUS.CLOSED, isArchived: false },
       select: { date: true },
       orderBy: { date: 'asc' },
     })
