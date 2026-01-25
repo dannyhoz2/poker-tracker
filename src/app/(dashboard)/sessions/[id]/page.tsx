@@ -557,9 +557,9 @@ export default function SessionPage() {
           )}
         </div>
 
-        {(isHost || canEdit) && (
+        {canEdit && (
           <div className="flex gap-2 flex-wrap">
-            {isActive && isHost && (
+            {isActive && canEdit && (
               <>
                 <Button onClick={() => setIsAddPlayerOpen(true)} variant="secondary">
                   Add Player
@@ -687,7 +687,7 @@ export default function SessionPage() {
                         >
                           {netResult! >= 0 ? '+' : ''}${netResult}
                         </p>
-                        {isHost && isActive && (
+                        {canEdit && isActive && (
                           <button
                             onClick={() => undoCashOut(player.id)}
                             className="text-xs text-gray-500 hover:text-gray-300 mt-1"
@@ -696,7 +696,7 @@ export default function SessionPage() {
                           </button>
                         )}
                       </div>
-                    ) : isHost && isActive ? (
+                    ) : canEdit && isActive ? (
                       <div className="flex items-center gap-2">
                         {player.buyInCount > 0 && (
                           <Button
@@ -785,7 +785,7 @@ export default function SessionPage() {
             <span className="text-amber-400 text-xl">*</span>
             Special Hands
           </h2>
-          {isHost && isActive && (
+          {canEdit && isActive && (
             <Button
               size="sm"
               variant="secondary"
@@ -854,17 +854,17 @@ export default function SessionPage() {
           <Card className="bg-gray-800/50 border-gray-700">
             <p className="text-center text-gray-500 text-sm py-4">
               No special hands recorded yet.
-              {isHost && isActive && ' Click "Record Hand" to add one.'}
+              {canEdit && isActive && ' Click "Record Hand" to add one.'}
             </p>
           </Card>
         )}
       </div>
 
       {/* Read-only indicator */}
-      {!isHost && isActive && (
+      {!canEdit && isActive && (
         <Card className="bg-gray-800/50 border-gray-700">
           <p className="text-center text-gray-400 text-sm">
-            👀 You&apos;re viewing this session. Only the host ({session.host.name}) can make changes.
+            👀 You&apos;re viewing this session. Only the host ({session.host.name}) or admins can make changes.
           </p>
         </Card>
       )}

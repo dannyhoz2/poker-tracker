@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
-import { SESSION_STATUS, PLAYER_TYPE, PIGGY_BANK_CONTRIBUTION } from '@/lib/constants'
+import { SESSION_STATUS, PLAYER_TYPE, PIGGY_BANK_CONTRIBUTION, USER_ROLE } from '@/lib/constants'
 import cuid from 'cuid'
 
 const PIGGY_BANK_USER_ID = 'piggy-bank'
@@ -26,8 +26,10 @@ export async function POST(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
 
-    if (session.hostId !== currentUser.id) {
-      return NextResponse.json({ error: 'Only the host can add players' }, { status: 403 })
+    const isHost = session.hostId === currentUser.id
+    const isAdmin = currentUser.role === USER_ROLE.ADMIN
+    if (!isHost && !isAdmin) {
+      return NextResponse.json({ error: 'Only the host or admin can add players' }, { status: 403 })
     }
 
     if (session.status !== SESSION_STATUS.ACTIVE) {

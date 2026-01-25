@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
-import { SESSION_STATUS, BUY_IN_AMOUNT } from '@/lib/constants'
+import { SESSION_STATUS, BUY_IN_AMOUNT, USER_ROLE } from '@/lib/constants'
 import cuid from 'cuid'
 
 export async function PATCH(
@@ -24,8 +24,10 @@ export async function PATCH(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
 
-    if (session.hostId !== currentUser.id) {
-      return NextResponse.json({ error: 'Only the host can modify players' }, { status: 403 })
+    const isHost = session.hostId === currentUser.id
+    const isAdmin = currentUser.role === USER_ROLE.ADMIN
+    if (!isHost && !isAdmin) {
+      return NextResponse.json({ error: 'Only the host or admin can modify players' }, { status: 403 })
     }
 
     if (session.status !== SESSION_STATUS.ACTIVE) {
@@ -216,8 +218,10 @@ export async function DELETE(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
 
-    if (session.hostId !== currentUser.id) {
-      return NextResponse.json({ error: 'Only the host can remove players' }, { status: 403 })
+    const isHost = session.hostId === currentUser.id
+    const isAdmin = currentUser.role === USER_ROLE.ADMIN
+    if (!isHost && !isAdmin) {
+      return NextResponse.json({ error: 'Only the host or admin can remove players' }, { status: 403 })
     }
 
     if (session.status !== SESSION_STATUS.ACTIVE) {
