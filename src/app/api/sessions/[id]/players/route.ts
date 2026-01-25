@@ -66,6 +66,25 @@ export async function POST(
 
     // If team player, add contribution to piggy bank
     if (userToAdd.playerType === PLAYER_TYPE.TEAM) {
+      // Check if piggy bank user exists, create if not
+      let piggyBankUser = await prisma.user.findUnique({
+        where: { id: PIGGY_BANK_USER_ID },
+      })
+
+      if (!piggyBankUser) {
+        piggyBankUser = await prisma.user.create({
+          data: {
+            id: PIGGY_BANK_USER_ID,
+            email: 'piggy-bank@system.local',
+            name: 'Piggy Bank',
+            passwordHash: 'SYSTEM_USER_NO_LOGIN',
+            role: 'PLAYER',
+            playerType: 'GUEST',
+            isActive: false,
+          },
+        })
+      }
+
       // Check if piggy bank is already in this session
       const piggyBankInSession = await prisma.sessionPlayer.findUnique({
         where: {

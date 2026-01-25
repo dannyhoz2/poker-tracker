@@ -15,9 +15,15 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const currentUser = await fetchCurrentUser()
-      setUser(currentUser)
-      setHasCheckedAuth(true)
+      try {
+        const currentUser = await fetchCurrentUser()
+        setUser(currentUser)
+      } catch (error) {
+        console.error('Auth check failed:', error)
+        setUser(null)
+      } finally {
+        setHasCheckedAuth(true)
+      }
     }
 
     checkAuth()
@@ -39,7 +45,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   if (!hasCheckedAuth) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500" />
           <p className="text-gray-400">Loading...</p>
@@ -48,5 +54,6 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     )
   }
 
-  return <>{children}</>
+  // Ensure no overlay is blocking content
+  return <div className="relative z-0">{children}</div>
 }
