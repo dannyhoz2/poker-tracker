@@ -23,6 +23,9 @@ export async function GET(
         host: {
           select: { id: true, name: true },
         },
+        hostLocation: {
+          select: { id: true, name: true },
+        },
         players: {
           include: {
             user: {
@@ -109,7 +112,7 @@ export async function PATCH(
     const isHost = session.hostId === currentUser.id
     const isAdmin = currentUser.role === USER_ROLE.ADMIN
 
-    const { action, notes, date, isArchived } = await request.json()
+    const { action, notes, date, isArchived, hostLocationId } = await request.json()
 
     // Admins can perform all session actions, hosts can only modify their own
     if (!isHost && !isAdmin) {
@@ -244,6 +247,31 @@ export async function PATCH(
         data: { notes },
         include: {
           host: {
+            select: { id: true, name: true },
+          },
+          players: {
+            include: {
+              user: {
+                select: { id: true, name: true },
+              },
+            },
+          },
+        },
+      })
+
+      return NextResponse.json({ session: updated })
+    }
+
+    // Handle host location update
+    if (hostLocationId !== undefined) {
+      const updated = await prisma.session.update({
+        where: { id },
+        data: { hostLocationId: hostLocationId || null },
+        include: {
+          host: {
+            select: { id: true, name: true },
+          },
+          hostLocation: {
             select: { id: true, name: true },
           },
           players: {

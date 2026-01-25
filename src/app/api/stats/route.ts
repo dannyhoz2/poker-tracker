@@ -278,6 +278,43 @@ export async function GET(request: NextRequest) {
 
     const piggyBankTotal = piggyBankEntries.reduce((sum, entry) => sum + (entry.cashOut || 0), 0)
 
+    // Get hosting stats - count sessions hosted at each player's location
+    const sessionsWithLocation = await prisma.session.findMany({
+      where: {
+        status: SESSION_STATUS.CLOSED,
+        isArchived: false,
+        hostLocationId: { not: null },
+        date: {
+          gte: startDate,
+          lt: endDate,
+        },
+      },
+      include: {
+        hostLocation: {
+          select: { id: true, name: true },
+        },
+      },
+    })
+
+    // Aggregate hosting stats
+    const hostingStatsMap: Record<string, { userId: string; userName: string; count: number }> = {}
+
+    sessionsWithLocation.forEach((session) => {
+      if (session.hostLocation) {
+        const userId = session.hostLocation.id
+        if (!hostingStatsMap[userId]) {
+          hostingStatsMap[userId] = {
+            userId,
+            userName: session.hostLocation.name,
+            count: 0,
+          }
+        }
+        hostingStatsMap[userId].count++
+      }
+    })
+
+    const hostingStats = Object.values(hostingStatsMap).sort((a, b) => b.count - a.count)
+
     return NextResponse.json({
       year,
       totalSessions,
@@ -287,6 +324,7 @@ export async function GET(request: NextRequest) {
       asteriskStats,
       specialHandsDetails,
       piggyBankTotal,
+      hostingStats,
     })
   } catch (error) {
     console.error('Get stats error:', error)

@@ -60,6 +60,12 @@ interface SpecialHandDetail {
   createdAt: string
 }
 
+interface HostingStats {
+  userId: string
+  userName: string
+  count: number
+}
+
 interface StatsData {
   year: number
   totalSessions: number
@@ -68,6 +74,7 @@ interface StatsData {
   asteriskStats: AsteriskStats[]
   specialHandsDetails: SpecialHandDetail[]
   piggyBankTotal: number
+  hostingStats: HostingStats[]
 }
 
 const COLORS = [
@@ -151,6 +158,11 @@ export default function StatsPage() {
   const playerNames = stats?.playerStats
     .filter((p) => p.sessionsPlayed > 0)
     .map((p) => p.userName) ?? []
+
+  const hostingData = stats?.hostingStats?.map((h) => ({
+    name: h.userName,
+    value: h.count,
+  })) ?? []
 
   return (
     <div className="space-y-8">
@@ -340,6 +352,47 @@ export default function StatsPage() {
                   }}
                   formatter={(value) => [`${Number(value).toFixed(1)}%`, 'Attendance']}
                 />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </Card>
+
+        {/* Host Location Distribution */}
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-100 mb-4">
+            Host Location Distribution
+          </h3>
+          {hostingData.length === 0 ? (
+            <p className="text-gray-400 text-center py-8">No hosting data yet</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={hostingData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, value }) => `${name}: ${value}`}
+                  outerRadius={100}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {hostingData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1f2937',
+                    border: '1px solid #374151',
+                    borderRadius: '8px',
+                  }}
+                  formatter={(value) => [`${value} sessions`, 'Hosted']}
+                />
+                <Legend />
               </PieChart>
             </ResponsiveContainer>
           )}

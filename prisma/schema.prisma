@@ -21,30 +21,33 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   // Relations
-  hostedSessions    Session[]       @relation("HostedSessions")
-  sessionPlayers    SessionPlayer[]
-  sentInvitations   Invitation[]    @relation("SentInvitations")
-  soldBuyIns        BuyInTransfer[] @relation("SoldBuyIns")
-  boughtBuyIns      BuyInTransfer[] @relation("BoughtBuyIns")
-  specialHands      SpecialHand[]
+  hostedSessions       Session[]       @relation("HostedSessions")
+  hostLocationSessions Session[]       @relation("HostLocationSessions")
+  sessionPlayers       SessionPlayer[]
+  sentInvitations      Invitation[]    @relation("SentInvitations")
+  soldBuyIns           BuyInTransfer[] @relation("SoldBuyIns")
+  boughtBuyIns         BuyInTransfer[] @relation("BoughtBuyIns")
+  specialHands         SpecialHand[]
 
   @@map("users")
 }
 
 model Session {
-  id          String    @id @default(cuid())
-  date        DateTime  @default(now())
-  status      String    @default("ACTIVE") // ACTIVE, CLOSED
-  hostId      String
-  totalPot    Int       @default(0)
-  notes       String?
-  closedAt    DateTime?
-  isArchived  Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  date           DateTime  @default(now())
+  status         String    @default("ACTIVE") // ACTIVE, CLOSED
+  hostId         String
+  hostLocationId String?   // User ID of whose house we're playing at
+  totalPot       Int       @default(0)
+  notes          String?
+  closedAt       DateTime?
+  isArchived     Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   // Relations
   host         User            @relation("HostedSessions", fields: [hostId], references: [id])
+  hostLocation User?           @relation("HostLocationSessions", fields: [hostLocationId], references: [id])
   players      SessionPlayer[]
   transfers    BuyInTransfer[]
   specialHands SpecialHand[]

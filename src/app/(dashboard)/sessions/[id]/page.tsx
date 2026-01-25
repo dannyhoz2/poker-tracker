@@ -51,6 +51,8 @@ interface Session {
   status: 'ACTIVE' | 'CLOSED'
   hostId: string
   host: User
+  hostLocationId?: string
+  hostLocation?: User
   players: SessionPlayer[]
   transfers: BuyInTransfer[]
   specialHands: SpecialHand[]
@@ -70,6 +72,7 @@ export default function SessionPage() {
   const [allUsers, setAllUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isAddPlayerOpen, setIsAddPlayerOpen] = useState(false)
+  const [selectedPlayersToAdd, setSelectedPlayersToAdd] = useState<string[]>([])
   const [isCashOutOpen, setIsCashOutOpen] = useState(false)
   const [isSellBuyInOpen, setIsSellBuyInOpen] = useState(false)
   const [isAddSpecialHandOpen, setIsAddSpecialHandOpen] = useState(false)
@@ -82,6 +85,8 @@ export default function SessionPage() {
   const [specialHandDescription, setSpecialHandDescription] = useState('')
   const [isEditDateOpen, setIsEditDateOpen] = useState(false)
   const [editDateValue, setEditDateValue] = useState('')
+  const [isEditHostLocationOpen, setIsEditHostLocationOpen] = useState(false)
+  const [selectedHostLocationId, setSelectedHostLocationId] = useState('')
 
   const isHost = session?.hostId === user?.id
   const isAdmin = user?.role === 'ADMIN'
@@ -128,24 +133,38 @@ export default function SessionPage() {
     }
   }
 
-  const addPlayer = async (userId: string) => {
+  const togglePlayerSelection = (userId: string) => {
+    setSelectedPlayersToAdd((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
+    )
+  }
+
+  const addSelectedPlayers = async () => {
+    if (selectedPlayersToAdd.length === 0) return
+
     setIsSubmitting(true)
     try {
-      const res = await fetch(`/api/sessions/${id}/players`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
-      })
+      // Add players one by one
+      for (const userId of selectedPlayersToAdd) {
+        const res = await fetch(`/api/sessions/${id}/players`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId }),
+        })
 
-      if (res.ok) {
-        await fetchSession()
-        setIsAddPlayerOpen(false)
-      } else {
-        const error = await res.json()
-        alert(error.error || 'Failed to add player')
+        if (!res.ok) {
+          const error = await res.json()
+          console.error(`Failed to add player ${userId}:`, error.error)
+        }
       }
+
+      await fetchSession()
+      setIsAddPlayerOpen(false)
+      setSelectedPlayersToAdd([])
     } catch (error) {
-      console.error('Failed to add player:', error)
+      console.error('Failed to add players:', error)
     } finally {
       setIsSubmitting(false)
     }
@@ -464,6 +483,34 @@ export default function SessionPage() {
     }
   }
 
+  const openEditHostLocation = () => {
+    setSelectedHostLocationId(session?.hostLocationId || '')
+    setIsEditHostLocationOpen(true)
+  }
+
+  const updateHostLocation = async () => {
+    setIsSubmitting(true)
+    try {
+      const res = await fetch(`/api/sessions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hostLocationId: selectedHostLocationId || null }),
+      })
+
+      if (res.ok) {
+        await fetchSession()
+        setIsEditHostLocationOpen(false)
+      } else {
+        const error = await res.json()
+        alert(error.error || 'Failed to update host location')
+      }
+    } catch (error) {
+      console.error('Failed to update host location:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   // Calculate totals
   const totalBuyIns = session?.players.reduce(
     (sum, p) => sum + p.buyInCount * BUY_IN_AMOUNT,
@@ -557,6 +604,25 @@ export default function SessionPage() {
           <p className="text-gray-400 mt-1">
             Hosted by {session.host.name}
             {isHost && ' (You)'}
+          </p>
+          <p className="text-gray-500 text-sm mt-1 flex items-center gap-1">
+            <span>📍</span>
+            {session.hostLocation ? (
+              <span>{session.hostLocation.name}&apos;s house</span>
+            ) : (
+              <span className="text-gray-600 italic">No location set</span>
+            )}
+            {canEdit && (
+              <button
+                onClick={openEditHostLocation}
+                className="ml-1 text-gray-500 hover:text-gray-300 transition-colors"
+                title="Edit host location"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                </svg>
+              </button>
+            )}
           </p>
           {session.notes && (
             <p className="text-gray-500 text-sm mt-1">{session.notes}</p>
@@ -897,23 +963,47 @@ export default function SessionPage() {
       {/* Add Player Modal */}
       <Modal
         isOpen={isAddPlayerOpen}
-        onClose={() => setIsAddPlayerOpen(false)}
-        title="Add Player"
+        onClose={() => {
+          setIsAddPlayerOpen(false)
+          setSelectedPlayersToAdd([])
+        }}
+        title="Add Players"
       >
         {availableUsers.length === 0 ? (
           <p className="text-gray-400">All users are already in the session.</p>
         ) : (
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {availableUsers.map((u) => (
-              <button
-                key={u.id}
-                onClick={() => addPlayer(u.id)}
-                disabled={isSubmitting}
-                className="w-full p-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-left transition-colors disabled:opacity-50"
+          <div className="space-y-4">
+            <p className="text-sm text-gray-400">Select players to add to the session:</p>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {availableUsers.map((u) => (
+                <button
+                  key={u.id}
+                  onClick={() => togglePlayerSelection(u.id)}
+                  disabled={isSubmitting}
+                  className={`w-full p-3 rounded-lg text-left transition-colors disabled:opacity-50 flex items-center justify-between ${
+                    selectedPlayersToAdd.includes(u.id)
+                      ? 'bg-emerald-700/50 border border-emerald-500'
+                      : 'bg-gray-700 hover:bg-gray-600'
+                  }`}
+                >
+                  <p className="font-medium text-gray-100">{u.name}</p>
+                  {selectedPlayersToAdd.includes(u.id) && (
+                    <svg className="w-5 h-5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+            {selectedPlayersToAdd.length > 0 && (
+              <Button
+                onClick={addSelectedPlayers}
+                isLoading={isSubmitting}
+                className="w-full"
               >
-                <p className="font-medium text-gray-100">{u.name}</p>
-              </button>
-            ))}
+                Add {selectedPlayersToAdd.length} Player{selectedPlayersToAdd.length !== 1 ? 's' : ''}
+              </Button>
+            )}
           </div>
         )}
       </Modal>
@@ -1127,6 +1217,49 @@ export default function SessionPage() {
               onClick={updateSessionDate}
               isLoading={isSubmitting}
               disabled={!editDateValue}
+              className="flex-1"
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Host Location Modal */}
+      <Modal
+        isOpen={isEditHostLocationOpen}
+        onClose={() => setIsEditHostLocationOpen(false)}
+        title="Edit Host Location"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Whose house are we playing at?
+            </label>
+            <select
+              value={selectedHostLocationId}
+              onChange={(e) => setSelectedHostLocationId(e.target.value)}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="">No location set</option>
+              {allUsers.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}&apos;s house
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setIsEditHostLocationOpen(false)}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={updateHostLocation}
+              isLoading={isSubmitting}
               className="flex-1"
             >
               Save

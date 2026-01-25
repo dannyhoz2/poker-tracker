@@ -6,7 +6,13 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
+import Modal from '@/components/ui/Modal'
 import { BUY_IN_AMOUNT } from '@/lib/constants'
+
+interface User {
+  id: string
+  name: string
+}
 
 interface Session {
   id: string
@@ -41,6 +47,9 @@ export default function DashboardPage() {
   const [piggyBankTotal, setPiggyBankTotal] = useState<number>(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isStarting, setIsStarting] = useState(false)
+  const [isHostLocationModalOpen, setIsHostLocationModalOpen] = useState(false)
+  const [allUsers, setAllUsers] = useState<User[]>([])
+  const [selectedHostLocation, setSelectedHostLocation] = useState<string>('')
 
   useEffect(() => {
     fetchData()
@@ -71,16 +80,35 @@ export default function DashboardPage() {
     }
   }
 
+  const openHostLocationModal = async () => {
+    // Fetch users for host location selection
+    try {
+      const res = await fetch('/api/users')
+      if (res.ok) {
+        const data = await res.json()
+        setAllUsers(data.users || [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch users:', error)
+    }
+    setSelectedHostLocation('')
+    setIsHostLocationModalOpen(true)
+  }
+
   const startSession = async () => {
     setIsStarting(true)
     try {
       const res = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hostLocationId: selectedHostLocation || null,
+        }),
       })
 
       if (res.ok) {
         const data = await res.json()
+        setIsHostLocationModalOpen(false)
         router.push(`/sessions/${data.session.id}`)
       }
     } catch (error) {
@@ -117,9 +145,8 @@ export default function DashboardPage() {
 
         {!activeSession && (
           <Button
-            onClick={startSession}
+            onClick={openHostLocationModal}
             size="lg"
-            isLoading={isStarting}
             className="w-full sm:w-auto"
           >
             Start New Session
@@ -262,6 +289,49 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Host Location Selection Modal */}
+      <Modal
+        isOpen={isHostLocationModalOpen}
+        onClose={() => setIsHostLocationModalOpen(false)}
+        title="Start New Session"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Whose house are we playing at?
+            </label>
+            <select
+              value={selectedHostLocation}
+              onChange={(e) => setSelectedHostLocation(e.target.value)}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="">Select host location...</option>
+              {allUsers.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}&apos;s house
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="secondary"
+              onClick={() => setIsHostLocationModalOpen(false)}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={startSession}
+              isLoading={isStarting}
+              className="flex-1"
+            >
+              Start Session
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

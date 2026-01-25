@@ -94,12 +94,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { notes } = await request.json().catch(() => ({}))
+    const { notes, hostLocationId } = await request.json().catch(() => ({}))
 
     const session = await prisma.session.create({
       data: {
         id: cuid(),
         hostId: currentUser.id,
+        hostLocationId: hostLocationId || null,
         notes,
       },
       include: {
