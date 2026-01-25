@@ -266,6 +266,37 @@ export async function PATCH(
       return NextResponse.json({ session: updated })
     }
 
+    // Handle date update (admin only)
+    if (date !== undefined) {
+      if (!isAdmin) {
+        return NextResponse.json({ error: 'Only admins can change the session date' }, { status: 403 })
+      }
+
+      const newDate = new Date(date)
+      if (isNaN(newDate.getTime())) {
+        return NextResponse.json({ error: 'Invalid date format' }, { status: 400 })
+      }
+
+      const updated = await prisma.session.update({
+        where: { id },
+        data: { date: newDate },
+        include: {
+          host: {
+            select: { id: true, name: true },
+          },
+          players: {
+            include: {
+              user: {
+                select: { id: true, name: true },
+              },
+            },
+          },
+        },
+      })
+
+      return NextResponse.json({ session: updated })
+    }
+
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   } catch (error) {
     console.error('Update session error:', error)

@@ -80,6 +80,8 @@ export default function SessionPage() {
   const [specialHandType, setSpecialHandType] = useState<SpecialHandType | ''>('')
   const [specialHandCards, setSpecialHandCards] = useState('')
   const [specialHandDescription, setSpecialHandDescription] = useState('')
+  const [isEditDateOpen, setIsEditDateOpen] = useState(false)
+  const [editDateValue, setEditDateValue] = useState('')
 
   const isHost = session?.hostId === user?.id
   const isAdmin = user?.role === 'ADMIN'
@@ -421,6 +423,41 @@ export default function SessionPage() {
     }
   }
 
+  const openEditDate = () => {
+    if (session) {
+      // Format date as YYYY-MM-DD for the input
+      const date = new Date(session.date)
+      const formatted = date.toISOString().split('T')[0]
+      setEditDateValue(formatted)
+      setIsEditDateOpen(true)
+    }
+  }
+
+  const updateSessionDate = async () => {
+    if (!editDateValue) return
+
+    setIsSubmitting(true)
+    try {
+      const res = await fetch(`/api/sessions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: editDateValue }),
+      })
+
+      if (res.ok) {
+        await fetchSession()
+        setIsEditDateOpen(false)
+      } else {
+        const error = await res.json()
+        alert(error.error || 'Failed to update session date')
+      }
+    } catch (error) {
+      console.error('Failed to update session date:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   // Calculate totals
   const totalBuyIns = session?.players.reduce(
     (sum, p) => sum + p.buyInCount * BUY_IN_AMOUNT,
@@ -488,6 +525,17 @@ export default function SessionPage() {
                 day: 'numeric',
               })}
             </h1>
+            {isAdmin && (
+              <button
+                onClick={openEditDate}
+                className="text-gray-500 hover:text-gray-300 transition-colors"
+                title="Edit date"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                </svg>
+              </button>
+            )}
             {isActive && (
               <span className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-medium">
                 <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse-live" />
@@ -1021,6 +1069,42 @@ export default function SessionPage() {
               className="flex-1"
             >
               Record Hand
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Date Modal (Admin Only) */}
+      <Modal
+        isOpen={isEditDateOpen}
+        onClose={() => setIsEditDateOpen(false)}
+        title="Edit Session Date"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-400 text-sm">
+            Change the date of this session. This will affect which year the session appears in for statistics.
+          </p>
+          <Input
+            type="date"
+            label="Session Date"
+            value={editDateValue}
+            onChange={(e) => setEditDateValue(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setIsEditDateOpen(false)}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={updateSessionDate}
+              isLoading={isSubmitting}
+              disabled={!editDateValue}
+              className="flex-1"
+            >
+              Save
             </Button>
           </div>
         </div>
