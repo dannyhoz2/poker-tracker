@@ -272,7 +272,9 @@ export async function PATCH(
         return NextResponse.json({ error: 'Only admins can change the session date' }, { status: 403 })
       }
 
-      const newDate = new Date(date)
+      // Parse date as local date (YYYY-MM-DD) to avoid timezone issues
+      // Adding T12:00:00 ensures the date stays correct regardless of timezone
+      const newDate = new Date(`${date}T12:00:00`)
       if (isNaN(newDate.getTime())) {
         return NextResponse.json({ error: 'Invalid date format' }, { status: 400 })
       }
