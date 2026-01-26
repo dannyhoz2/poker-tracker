@@ -187,15 +187,20 @@ export default function StatsPage() {
       totalPot: s.totalPot,
     })) ?? []
 
-  // Session duration data (convert minutes to hours for display)
+  // Session duration data
   const durationData = stats?.sessionData
     ?.filter((s) => s.durationMinutes !== null)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .map((s) => ({
-      date: new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      durationHours: Math.round((s.durationMinutes! / 60) * 10) / 10,
-      durationMinutes: s.durationMinutes,
-    })) ?? []
+    .map((s) => {
+      const totalMinutes = s.durationMinutes!
+      const hours = Math.floor(totalMinutes / 60)
+      const minutes = totalMinutes % 60
+      return {
+        date: new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        durationMinutes: totalMinutes,
+        durationLabel: `${hours}h ${minutes}m`,
+      }
+    }) ?? []
 
   return (
     <div className="space-y-8">
@@ -470,21 +475,27 @@ export default function StatsPage() {
               <BarChart data={durationData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
-                <YAxis stroke="#9ca3af" label={{ value: 'Hours', angle: -90, position: 'insideLeft', fill: '#9ca3af' }} />
+                <YAxis
+                  stroke="#9ca3af"
+                  tickFormatter={(value) => {
+                    const hours = Math.floor(value / 60)
+                    return `${hours}h`
+                  }}
+                />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: '#1f2937',
                     border: '1px solid #374151',
                     borderRadius: '8px',
                   }}
-                  formatter={(value, name) => {
-                    if (name === 'durationHours') {
-                      return [`${value} hours`, 'Duration']
-                    }
-                    return [value, name]
+                  formatter={(value) => {
+                    const minutes = Number(value)
+                    const hours = Math.floor(minutes / 60)
+                    const mins = minutes % 60
+                    return [`${hours}h ${mins}m`, 'Duration']
                   }}
                 />
-                <Bar dataKey="durationHours" fill="#8b5cf6" />
+                <Bar dataKey="durationMinutes" fill="#8b5cf6" />
               </BarChart>
             </ResponsiveContainer>
           )}
