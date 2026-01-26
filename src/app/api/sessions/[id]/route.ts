@@ -53,6 +53,17 @@ export async function GET(
           },
           orderBy: { createdAt: 'asc' },
         },
+        transactions: {
+          include: {
+            player: {
+              select: { id: true, name: true },
+            },
+            targetPlayer: {
+              select: { id: true, name: true },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
       },
     })
 

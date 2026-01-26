@@ -45,6 +45,15 @@ interface SpecialHand {
   player: User
 }
 
+interface SessionTransaction {
+  id: string
+  type: 'BUY_IN' | 'REMOVE_BUY_IN' | 'SELL_BUY_IN' | 'CASH_OUT'
+  amount: number
+  createdAt: string
+  player: User
+  targetPlayer?: User | null
+}
+
 interface Session {
   id: string
   date: string
@@ -56,6 +65,7 @@ interface Session {
   players: SessionPlayer[]
   transfers: BuyInTransfer[]
   specialHands: SpecialHand[]
+  transactions: SessionTransaction[]
   totalPot: number
   notes?: string
   isArchived?: boolean
@@ -841,35 +851,88 @@ export default function SessionPage() {
         </div>
       </div>
 
-      {/* Buy-In Transfers Table */}
-      {session.transfers && session.transfers.length > 0 && (
+      {/* Transactions Table */}
+      {session.transactions && session.transactions.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold text-gray-100 mb-4">Buy-In Transfers</h2>
+          <h2 className="text-lg font-semibold text-gray-100 mb-4">Transactions</h2>
           <Card>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-700">
-                    <th className="text-left py-2 px-3 text-sm font-medium text-gray-400">Seller</th>
-                    <th className="text-left py-2 px-3 text-sm font-medium text-gray-400">Buyer</th>
+                    <th className="text-left py-2 px-3 text-sm font-medium text-gray-400">Time</th>
+                    <th className="text-left py-2 px-3 text-sm font-medium text-gray-400">Player</th>
+                    <th className="text-left py-2 px-3 text-sm font-medium text-gray-400">Action</th>
                     <th className="text-right py-2 px-3 text-sm font-medium text-gray-400">Amount</th>
-                    <th className="text-right py-2 px-3 text-sm font-medium text-gray-400">Time</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {session.transfers.map((transfer) => (
-                    <tr key={transfer.id} className="border-b border-gray-700/50 last:border-0">
-                      <td className="py-2 px-3 text-gray-100">{transfer.seller.name}</td>
-                      <td className="py-2 px-3 text-gray-100">{transfer.buyer.name}</td>
-                      <td className="py-2 px-3 text-right text-emerald-400">${transfer.amount}</td>
-                      <td className="py-2 px-3 text-right text-gray-400 text-sm">
-                        {new Date(transfer.createdAt).toLocaleTimeString('en-US', {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                        })}
-                      </td>
-                    </tr>
-                  ))}
+                  {session.transactions.map((tx) => {
+                    const getTypeLabel = () => {
+                      switch (tx.type) {
+                        case 'BUY_IN':
+                          return 'Buy In'
+                        case 'REMOVE_BUY_IN':
+                          return 'Remove Buy-In'
+                        case 'SELL_BUY_IN':
+                          return `Sold to ${tx.targetPlayer?.name || 'Unknown'}`
+                        case 'CASH_OUT':
+                          return 'Cash Out'
+                        default:
+                          return tx.type
+                      }
+                    }
+
+                    const getTypeStyle = () => {
+                      switch (tx.type) {
+                        case 'BUY_IN':
+                          return 'bg-emerald-900/30 text-emerald-400'
+                        case 'REMOVE_BUY_IN':
+                          return 'bg-red-900/30 text-red-400'
+                        case 'SELL_BUY_IN':
+                          return 'bg-blue-900/30 text-blue-400'
+                        case 'CASH_OUT':
+                          return 'bg-amber-900/30 text-amber-400'
+                        default:
+                          return 'bg-gray-700 text-gray-300'
+                      }
+                    }
+
+                    const getAmountDisplay = () => {
+                      switch (tx.type) {
+                        case 'BUY_IN':
+                          return <span className="text-emerald-400">+${tx.amount}</span>
+                        case 'REMOVE_BUY_IN':
+                          return <span className="text-red-400">-${tx.amount}</span>
+                        case 'SELL_BUY_IN':
+                          return <span className="text-blue-400">${tx.amount}</span>
+                        case 'CASH_OUT':
+                          return <span className="text-amber-400">${tx.amount}</span>
+                        default:
+                          return `$${tx.amount}`
+                      }
+                    }
+
+                    return (
+                      <tr key={tx.id} className="border-b border-gray-700/50 last:border-0">
+                        <td className="py-2 px-3 text-gray-400 text-sm">
+                          {new Date(tx.createdAt).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}
+                        </td>
+                        <td className="py-2 px-3 text-gray-100">{tx.player.name}</td>
+                        <td className="py-2 px-3">
+                          <span className={`px-2 py-1 rounded text-sm ${getTypeStyle()}`}>
+                            {getTypeLabel()}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3 text-right font-medium">
+                          {getAmountDisplay()}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

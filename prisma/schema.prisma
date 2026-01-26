@@ -28,6 +28,8 @@ model User {
   soldBuyIns           BuyInTransfer[] @relation("SoldBuyIns")
   boughtBuyIns         BuyInTransfer[] @relation("BoughtBuyIns")
   specialHands         SpecialHand[]
+  playerTransactions   SessionTransaction[] @relation("PlayerTransactions")
+  targetTransactions   SessionTransaction[] @relation("TargetTransactions")
 
   @@map("users")
 }
@@ -51,6 +53,7 @@ model Session {
   players      SessionPlayer[]
   transfers    BuyInTransfer[]
   specialHands SpecialHand[]
+  transactions SessionTransaction[]
 
   @@map("sessions")
 }
@@ -106,6 +109,24 @@ model BuyInTransfer {
   buyer       User    @relation("BoughtBuyIns", fields: [buyerId], references: [id])
 
   @@map("buy_in_transfers")
+}
+
+// Transaction log for all session activities
+model SessionTransaction {
+  id             String   @id @default(cuid())
+  sessionId      String
+  playerId       String
+  type           String   // BUY_IN, REMOVE_BUY_IN, SELL_BUY_IN, CASH_OUT
+  amount         Int
+  targetPlayerId String?  // For SELL_BUY_IN - who bought it
+  createdAt      DateTime @default(now())
+
+  // Relations
+  session      Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  player       User    @relation("PlayerTransactions", fields: [playerId], references: [id])
+  targetPlayer User?   @relation("TargetTransactions", fields: [targetPlayerId], references: [id])
+
+  @@map("session_transactions")
 }
 
 // Special hands that earn an asterisk (*) - Royal Four of a Kind and above

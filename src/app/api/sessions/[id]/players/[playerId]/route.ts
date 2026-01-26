@@ -45,17 +45,28 @@ export async function PATCH(
     const { action, cashOut, buyerId } = await request.json()
 
     if (action === 'buyIn') {
-      const updated = await prisma.sessionPlayer.update({
-        where: { id: playerId },
-        data: {
-          buyInCount: sessionPlayer.buyInCount + 1,
-        },
-        include: {
-          user: {
-            select: { id: true, name: true },
+      const [updated] = await prisma.$transaction([
+        prisma.sessionPlayer.update({
+          where: { id: playerId },
+          data: {
+            buyInCount: sessionPlayer.buyInCount + 1,
           },
-        },
-      })
+          include: {
+            user: {
+              select: { id: true, name: true },
+            },
+          },
+        }),
+        prisma.sessionTransaction.create({
+          data: {
+            id: cuid(),
+            sessionId,
+            playerId: sessionPlayer.userId,
+            type: 'BUY_IN',
+            amount: BUY_IN_AMOUNT,
+          },
+        }),
+      ])
 
       return NextResponse.json({ player: updated })
     }
@@ -65,17 +76,28 @@ export async function PATCH(
         return NextResponse.json({ error: 'No buy-ins to remove' }, { status: 400 })
       }
 
-      const updated = await prisma.sessionPlayer.update({
-        where: { id: playerId },
-        data: {
-          buyInCount: sessionPlayer.buyInCount - 1,
-        },
-        include: {
-          user: {
-            select: { id: true, name: true },
+      const [updated] = await prisma.$transaction([
+        prisma.sessionPlayer.update({
+          where: { id: playerId },
+          data: {
+            buyInCount: sessionPlayer.buyInCount - 1,
           },
-        },
-      })
+          include: {
+            user: {
+              select: { id: true, name: true },
+            },
+          },
+        }),
+        prisma.sessionTransaction.create({
+          data: {
+            id: cuid(),
+            sessionId,
+            playerId: sessionPlayer.userId,
+            type: 'REMOVE_BUY_IN',
+            amount: BUY_IN_AMOUNT,
+          },
+        }),
+      ])
 
       return NextResponse.json({ player: updated })
     }
@@ -85,18 +107,29 @@ export async function PATCH(
         return NextResponse.json({ error: 'Valid cash-out amount required' }, { status: 400 })
       }
 
-      const updated = await prisma.sessionPlayer.update({
-        where: { id: playerId },
-        data: {
-          cashOut,
-          leftAt: new Date(),
-        },
-        include: {
-          user: {
-            select: { id: true, name: true },
+      const [updated] = await prisma.$transaction([
+        prisma.sessionPlayer.update({
+          where: { id: playerId },
+          data: {
+            cashOut,
+            leftAt: new Date(),
           },
-        },
-      })
+          include: {
+            user: {
+              select: { id: true, name: true },
+            },
+          },
+        }),
+        prisma.sessionTransaction.create({
+          data: {
+            id: cuid(),
+            sessionId,
+            playerId: sessionPlayer.userId,
+            type: 'CASH_OUT',
+            amount: cashOut,
+          },
+        }),
+      ])
 
       return NextResponse.json({ player: updated })
     }
@@ -182,6 +215,18 @@ export async function PATCH(
             buyer: {
               select: { id: true, name: true },
             },
+          },
+        })
+
+        // Log the transaction
+        await tx.sessionTransaction.create({
+          data: {
+            id: cuid(),
+            sessionId,
+            playerId: sessionPlayer.userId,
+            type: 'SELL_BUY_IN',
+            amount: BUY_IN_AMOUNT,
+            targetPlayerId: buyerPlayer.userId,
           },
         })
 
