@@ -106,16 +106,19 @@ export default function SessionPage() {
   useEffect(() => {
     fetchSession()
     fetchUsers()
+  }, [id])
+
+  // Separate effect for polling - re-runs when session status changes
+  useEffect(() => {
+    if (session?.status !== 'ACTIVE') return
 
     // Poll for updates every 3 seconds for active sessions
     const interval = setInterval(() => {
-      if (session?.status === 'ACTIVE') {
-        fetchSession()
-      }
+      fetchSession()
     }, 3000)
 
     return () => clearInterval(interval)
-  }, [id])
+  }, [id, session?.status])
 
   const fetchSession = async () => {
     try {
