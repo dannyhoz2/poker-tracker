@@ -66,8 +66,10 @@ export default function DashboardPage() {
   const [selectedHostLocation, setSelectedHostLocation] = useState<string>('')
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    if (user) {
+      fetchData()
+    }
+  }, [user])
 
   const fetchData = async () => {
     try {
@@ -84,7 +86,13 @@ export default function DashboardPage() {
       const piggyBankData = await piggyBankRes.json()
 
       setActiveSession(activeData.session)
-      setRecentSessions(sessionsData.sessions?.slice(0, 5) || [])
+
+      // Filter to only sessions where the current user played
+      const mySessions = (sessionsData.sessions || []).filter((session: Session) =>
+        session.players.some(p => p.user.id === user?.id)
+      )
+      setRecentSessions(mySessions.slice(0, 5))
+
       setStats(statsData)
       setPiggyBankTotal(piggyBankData.total || 0)
     } catch (error) {
@@ -302,10 +310,10 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* Recent Sessions */}
+      {/* My Recent Sessions */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-100">Recent Sessions</h2>
+          <h2 className="text-lg font-semibold text-gray-100">My Recent Sessions</h2>
           <Link
             href="/sessions"
             className="text-emerald-400 hover:text-emerald-300 text-sm"
@@ -317,7 +325,7 @@ export default function DashboardPage() {
         {recentSessions.length === 0 ? (
           <Card>
             <p className="text-center text-gray-400 py-8">
-              No completed sessions yet. Start your first game!
+              You haven&apos;t played in any sessions yet.
             </p>
           </Card>
         ) : (
