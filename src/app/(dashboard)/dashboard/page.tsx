@@ -50,6 +50,11 @@ interface Stats {
     attendanceRate: number
   }>
   cumulativeData: Array<{ date: string; [key: string]: number | string }>
+  asteriskStats: Array<{
+    playerId: string
+    playerName: string
+    totalAsterisks: number
+  }>
 }
 
 export default function DashboardPage() {
@@ -272,9 +277,28 @@ export default function DashboardPage() {
           <h3 className="text-xs font-medium text-amber-400 uppercase tracking-wider">
             Piggy Bank
           </h3>
-          <p className="mt-2 text-2xl font-bold text-amber-400">
-            ${piggyBankTotal}
-          </p>
+          <div className="mt-2 flex items-center gap-3">
+            <p className="text-2xl font-bold text-amber-400">
+              ${piggyBankTotal}
+            </p>
+            {(() => {
+              const maxAsterisks = Math.max(0, ...(stats?.asteriskStats?.map(s => s.totalAsterisks) || [0]))
+              const myAsterisks = stats?.asteriskStats?.find(s => s.playerId === user?.id)?.totalAsterisks || 0
+              if (maxAsterisks === 0) return null
+              return (
+                <div className="flex items-center" title={`You: ${myAsterisks} special hand${myAsterisks !== 1 ? 's' : ''} / Max: ${maxAsterisks}`}>
+                  {Array.from({ length: maxAsterisks }).map((_, i) => (
+                    <span
+                      key={i}
+                      className={`text-xl font-bold ${i < myAsterisks ? 'text-amber-400' : 'text-gray-600'}`}
+                    >
+                      *
+                    </span>
+                  ))}
+                </div>
+              )
+            })()}
+          </div>
           <p className="text-xs text-gray-500 mt-1">year total</p>
         </Card>
       </div>
