@@ -135,18 +135,34 @@ export async function PATCH(
     }
 
     if (action === 'undoCashOut') {
-      const updated = await prisma.sessionPlayer.update({
-        where: { id: playerId },
-        data: {
-          cashOut: null,
-          leftAt: null,
+      // Find and delete the most recent CASH_OUT transaction for this player
+      const cashOutTransaction = await prisma.sessionTransaction.findFirst({
+        where: {
+          sessionId,
+          playerId: sessionPlayer.userId,
+          type: 'CASH_OUT',
         },
-        include: {
-          user: {
-            select: { id: true, name: true },
-          },
-        },
+        orderBy: { createdAt: 'desc' },
       })
+
+      const [updated] = await prisma.$transaction([
+        prisma.sessionPlayer.update({
+          where: { id: playerId },
+          data: {
+            cashOut: null,
+            leftAt: null,
+          },
+          include: {
+            user: {
+              select: { id: true, name: true },
+            },
+          },
+        }),
+        // Delete the cash out transaction if it exists
+        ...(cashOutTransaction
+          ? [prisma.sessionTransaction.delete({ where: { id: cashOutTransaction.id } })]
+          : []),
+      ])
 
       return NextResponse.json({ player: updated })
     }
