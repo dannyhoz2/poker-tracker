@@ -26,6 +26,7 @@ interface Session {
     user: { id: string; name: string }
   }>
   totalPot: number
+  specialHandsCount?: number
 }
 
 interface Stats {
@@ -270,6 +271,11 @@ export default function DashboardPage() {
                           month: 'short',
                           day: 'numeric',
                         })}
+                        {session.specialHandsCount && session.specialHandsCount > 0 && (
+                          <span className="text-amber-400 font-bold text-xl ml-2" title={`${session.specialHandsCount} special hand${session.specialHandsCount > 1 ? 's' : ''}`}>
+                            {'*'.repeat(session.specialHandsCount)}
+                          </span>
+                        )}
                       </p>
                       <p className="text-sm text-gray-400">
                         {session.players.length} players • Hosted by{' '}
