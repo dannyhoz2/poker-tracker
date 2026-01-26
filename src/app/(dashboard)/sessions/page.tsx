@@ -196,24 +196,22 @@ export default function SessionsPage() {
                           day: 'numeric',
                           year: 'numeric',
                         })}
+                        {session.specialHandsCount && session.specialHandsCount > 0 && (
+                          <span className="text-amber-400 font-bold text-xl ml-2" title={`${session.specialHandsCount} special hand${session.specialHandsCount > 1 ? 's' : ''}`}>
+                            {'*'.repeat(session.specialHandsCount)}
+                          </span>
+                        )}
                       </p>
                       <p className="text-sm text-gray-400">
                         {session.playerCount} players • Hosted by {session.host.name}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right flex items-center gap-3">
-                    {session.specialHandsCount && session.specialHandsCount > 0 && (
-                      <span className="text-amber-400 font-bold text-lg" title={`${session.specialHandsCount} special hand${session.specialHandsCount > 1 ? 's' : ''}`}>
-                        {'*'.repeat(session.specialHandsCount)}
-                      </span>
-                    )}
-                    <div>
-                      <p className="font-bold text-emerald-400">
-                        ${session.totalPot}
-                      </p>
-                      <p className="text-sm text-gray-500">total pot</p>
-                    </div>
+                  <div className="text-right">
+                    <p className="font-bold text-emerald-400">
+                      ${session.totalPot}
+                    </p>
+                    <p className="text-sm text-gray-500">total pot</p>
                   </div>
                 </div>
               </Card>
