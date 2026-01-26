@@ -261,10 +261,10 @@ export default function StatsPage() {
             <p className="text-gray-400 text-center py-8">No data yet</p>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={leaderboardData} layout="vertical">
+              <BarChart data={leaderboardData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis type="number" stroke="#9ca3af" />
-                <YAxis dataKey="name" type="category" stroke="#9ca3af" width={80} />
+                <XAxis dataKey="name" stroke="#9ca3af" />
+                <YAxis stroke="#9ca3af" />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: '#1f2937',

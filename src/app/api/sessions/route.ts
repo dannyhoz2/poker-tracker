@@ -49,6 +49,9 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+        specialHands: {
+          select: { id: true },
+        },
       },
       orderBy: { date: 'desc' },
     })
@@ -64,6 +67,7 @@ export async function GET(request: NextRequest) {
           0
         ),
         playerCount: filteredPlayers.length,
+        specialHandsCount: session.specialHands.length,
       }
     })
 
