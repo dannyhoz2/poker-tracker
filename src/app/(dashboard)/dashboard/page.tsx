@@ -8,6 +8,15 @@ import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import Modal from '@/components/ui/Modal'
 import { BUY_IN_AMOUNT } from '@/lib/constants'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
 
 interface User {
   id: string
@@ -36,7 +45,11 @@ interface Stats {
     userName: string
     netGainLoss: number
     sessionsPlayed: number
+    biggestWin: number
+    biggestLoss: number
+    attendanceRate: number
   }>
+  cumulativeData: Array<{ date: string; [key: string]: number | string }>
 }
 
 export default function DashboardPage() {
@@ -176,28 +189,14 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* Piggy Bank Banner */}
-      <Card className="bg-amber-900/30 border-amber-700">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">🐷</span>
-            <div>
-              <h3 className="text-lg font-semibold text-amber-400">Piggy Bank</h3>
-              <p className="text-sm text-gray-400">$1 from each team player per session</p>
-            </div>
-          </div>
-          <p className="text-3xl font-bold text-amber-400">${piggyBankTotal}</p>
-        </div>
-      </Card>
-
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card>
-          <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider">
+          <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
             Your YTD Earnings
           </h3>
           <p
-            className={`mt-2 text-3xl font-bold ${
+            className={`mt-2 text-2xl font-bold ${
               (myStats?.netGainLoss ?? 0) >= 0
                 ? 'text-emerald-400'
                 : 'text-red-400'
@@ -206,31 +205,53 @@ export default function DashboardPage() {
             {(myStats?.netGainLoss ?? 0) >= 0 ? '+' : ''}$
             {myStats?.netGainLoss ?? 0}
           </p>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 mt-1">
             {myStats?.sessionsPlayed ?? 0} sessions played
           </p>
         </Card>
 
         <Card>
-          <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider">
-            Total Sessions
+          <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+            Best Win
           </h3>
-          <p className="mt-2 text-3xl font-bold text-gray-100">
-            {stats?.totalSessions ?? 0}
+          <p className="mt-2 text-2xl font-bold text-emerald-400">
+            +${myStats?.biggestWin ?? 0}
           </p>
-          <p className="text-sm text-gray-500 mt-1">this year</p>
+          <p className="text-xs text-gray-500 mt-1">single session</p>
         </Card>
 
         <Card>
-          <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider">
+          <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+            Worst Loss
+          </h3>
+          <p className="mt-2 text-2xl font-bold text-red-400">
+            -${myStats?.biggestLoss ?? 0}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">single session</p>
+        </Card>
+
+        <Card>
+          <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+            Total Sessions
+          </h3>
+          <p className="mt-2 text-2xl font-bold text-gray-100">
+            {stats?.totalSessions ?? 0}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            {myStats?.attendanceRate?.toFixed(0) ?? 0}% attendance
+          </p>
+        </Card>
+
+        <Card>
+          <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
             Top Winner
           </h3>
           {stats?.playerStats?.[0] ? (
             <>
-              <p className="mt-2 text-3xl font-bold text-emerald-400">
+              <p className="mt-2 text-2xl font-bold text-emerald-400">
                 +${stats.playerStats[0].netGainLoss}
               </p>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                 {stats.playerStats[0].userName}
               </p>
             </>
@@ -238,7 +259,48 @@ export default function DashboardPage() {
             <p className="mt-2 text-gray-500">No data yet</p>
           )}
         </Card>
+
+        <Card className="bg-amber-900/30 border-amber-700/50">
+          <h3 className="text-xs font-medium text-amber-400 uppercase tracking-wider">
+            Piggy Bank
+          </h3>
+          <p className="mt-2 text-2xl font-bold text-amber-400">
+            ${piggyBankTotal}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">year total</p>
+        </Card>
       </div>
+
+      {/* My Cumulative Earnings Chart */}
+      {stats?.cumulativeData && stats.cumulativeData.length > 0 && user?.name && (
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-100 mb-4">
+            My Cumulative Earnings
+          </h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={stats.cumulativeData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
+              <YAxis stroke="#9ca3af" />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#1f2937',
+                  border: '1px solid #374151',
+                  borderRadius: '8px',
+                }}
+                formatter={(value) => [`$${value}`, 'Earnings']}
+              />
+              <Line
+                type="monotone"
+                dataKey={user.name}
+                stroke="#10b981"
+                strokeWidth={2}
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+      )}
 
       {/* Recent Sessions */}
       <div>
