@@ -719,54 +719,56 @@ export default function SessionPage() {
 
             return (
               <Card key={player.id}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-lg font-medium">
-                      {player.user.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-gray-100">
-                          {player.user.name}
-                          {player.userId === session.hostId && (
-                            <span className="ml-2 text-xs text-emerald-400">
-                              Host
-                            </span>
+                <div className="flex flex-col gap-3">
+                  {/* Player info row */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-lg font-medium flex-shrink-0">
+                        {player.user.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-gray-100">
+                            {player.user.name}
+                            {player.userId === session.hostId && (
+                              <span className="ml-2 text-xs text-emerald-400">
+                                Host
+                              </span>
+                            )}
+                          </p>
+                          {/* Chip indicators */}
+                          <div className="flex items-center gap-0.5">
+                            {/* Yellow chips for buy-ins */}
+                            {Array.from({ length: player.buyInCount }).map((_, i) => (
+                              <svg key={`yellow-${i}`} className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+                                <circle cx="12" cy="12" r="10" fill="#EAB308" stroke="#CA8A04" strokeWidth="2"/>
+                                <circle cx="12" cy="12" r="6" stroke="#CA8A04" strokeWidth="1" fill="none"/>
+                              </svg>
+                            ))}
+                            {/* Green chips for sold buy-ins */}
+                            {chipsSold > 0 && Array.from({ length: Math.floor(chipsSold / BUY_IN_AMOUNT) }).map((_, i) => (
+                              <svg key={`green-${i}`} className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+                                <circle cx="12" cy="12" r="10" fill="#22C55E" stroke="#16A34A" strokeWidth="2"/>
+                                <circle cx="12" cy="12" r="6" stroke="#16A34A" strokeWidth="1" fill="none"/>
+                              </svg>
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-400">
+                          {player.buyInCount} buy-in{player.buyInCount !== 1 ? 's' : ''}{' '}
+                          (${buyInTotal})
+                          {chipsSold > 0 && (
+                            <span className="text-emerald-400"> +${chipsSold} sold</span>
                           )}
                         </p>
-                        {/* Chip indicators */}
-                        <div className="flex items-center gap-0.5">
-                          {/* Yellow chips for buy-ins */}
-                          {Array.from({ length: player.buyInCount }).map((_, i) => (
-                            <svg key={`yellow-${i}`} className="w-4 h-4" viewBox="0 0 24 24" fill="none">
-                              <circle cx="12" cy="12" r="10" fill="#EAB308" stroke="#CA8A04" strokeWidth="2"/>
-                              <circle cx="12" cy="12" r="6" stroke="#CA8A04" strokeWidth="1" fill="none"/>
-                            </svg>
-                          ))}
-                          {/* Green chips for sold buy-ins */}
-                          {chipsSold > 0 && Array.from({ length: Math.floor(chipsSold / BUY_IN_AMOUNT) }).map((_, i) => (
-                            <svg key={`green-${i}`} className="w-4 h-4" viewBox="0 0 24 24" fill="none">
-                              <circle cx="12" cy="12" r="10" fill="#22C55E" stroke="#16A34A" strokeWidth="2"/>
-                              <circle cx="12" cy="12" r="6" stroke="#16A34A" strokeWidth="1" fill="none"/>
-                            </svg>
-                          ))}
-                        </div>
                       </div>
-                      <p className="text-sm text-gray-400">
-                        {player.buyInCount} buy-in{player.buyInCount !== 1 ? 's' : ''}{' '}
-                        (${buyInTotal})
-                        {chipsSold > 0 && (
-                          <span className="text-emerald-400"> +${chipsSold} sold</span>
-                        )}
-                      </p>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-3">
-                    {player.cashOut !== null ? (
+                    {/* Cash out result - shown on the right for cashed out players */}
+                    {player.cashOut !== null && (
                       <div className="text-right">
                         <p className="font-medium text-gray-100">
-                          Cashed out: ${player.cashOut}
+                          ${player.cashOut}
                           {chipsSold > 0 && (
                             <span className="text-emerald-400"> +${chipsSold}</span>
                           )}
@@ -787,45 +789,51 @@ export default function SessionPage() {
                           </button>
                         )}
                       </div>
-                    ) : canEdit && isActive ? (
-                      <div className="flex items-center gap-2">
-                        {player.buyInCount > 0 && (
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            onClick={() => removeBuyIn(player.id, player.user.name)}
-                          >
-                            -$10
-                          </Button>
-                        )}
-                        {session.players.filter(p => p.id !== player.id && p.cashOut === null).length > 0 && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => openSellBuyIn(player)}
-                          >
-                            Sell
-                          </Button>
-                        )}
+                    )}
+                  </div>
+
+                  {/* Action buttons row - only shown for active players who haven't cashed out */}
+                  {player.cashOut === null && canEdit && isActive && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {player.buyInCount > 0 && (
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => removeBuyIn(player.id, player.user.name)}
+                        >
+                          -$10
+                        </Button>
+                      )}
+                      {session.players.filter(p => p.id !== player.id && p.cashOut === null).length > 0 && (
                         <Button
                           size="sm"
                           variant="secondary"
-                          onClick={() => addBuyIn(player.id, player.user.name)}
+                          onClick={() => openSellBuyIn(player)}
                         >
-                          +$10
+                          Sell
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="success"
-                          onClick={() => openCashOut(player)}
-                        >
-                          Cash Out
-                        </Button>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-500">Playing</span>
-                    )}
-                  </div>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => addBuyIn(player.id, player.user.name)}
+                      >
+                        +$10
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="success"
+                        onClick={() => openCashOut(player)}
+                      >
+                        Cash Out
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Playing status for non-editors */}
+                  {player.cashOut === null && (!canEdit || !isActive) && (
+                    <span className="text-sm text-gray-500">Playing</span>
+                  )}
                 </div>
               </Card>
             )
