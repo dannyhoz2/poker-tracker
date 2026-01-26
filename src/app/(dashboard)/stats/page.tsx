@@ -66,10 +66,25 @@ interface HostingStats {
   count: number
 }
 
+interface SessionData {
+  id: string
+  date: string
+  totalPot: number
+  durationMinutes: number | null
+  players: Array<{
+    userId: string
+    userName: string
+    buyIns: number
+    cashOut: number
+    netResult: number
+  }>
+}
+
 interface StatsData {
   year: number
   totalSessions: number
   playerStats: PlayerStats[]
+  sessionData: SessionData[]
   cumulativeData: Array<{ date: string; [key: string]: number | string }>
   asteriskStats: AsteriskStats[]
   specialHandsDetails: SpecialHandDetail[]
@@ -163,6 +178,24 @@ export default function StatsPage() {
     name: h.userName,
     value: h.count,
   })) ?? []
+
+  // Total pot per session data
+  const totalPotData = stats?.sessionData
+    ?.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .map((s) => ({
+      date: new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      totalPot: s.totalPot,
+    })) ?? []
+
+  // Session duration data (convert minutes to hours for display)
+  const durationData = stats?.sessionData
+    ?.filter((s) => s.durationMinutes !== null)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .map((s) => ({
+      date: new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      durationHours: Math.round((s.durationMinutes! / 60) * 10) / 10,
+      durationMinutes: s.durationMinutes,
+    })) ?? []
 
   return (
     <div className="space-y-8">
@@ -394,6 +427,65 @@ export default function StatsPage() {
                 />
                 <Legend />
               </PieChart>
+            </ResponsiveContainer>
+          )}
+        </Card>
+
+        {/* Total Pot Per Session */}
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-100 mb-4">
+            Total Pot Per Session
+          </h3>
+          {totalPotData.length === 0 ? (
+            <p className="text-gray-400 text-center py-8">No data yet</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={totalPotData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
+                <YAxis stroke="#9ca3af" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1f2937',
+                    border: '1px solid #374151',
+                    borderRadius: '8px',
+                  }}
+                  formatter={(value) => [`$${value}`, 'Total Pot']}
+                />
+                <Bar dataKey="totalPot" fill="#f59e0b" />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </Card>
+
+        {/* Session Duration */}
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-100 mb-4">
+            Session Duration
+          </h3>
+          {durationData.length === 0 ? (
+            <p className="text-gray-400 text-center py-8">No duration data yet</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={durationData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
+                <YAxis stroke="#9ca3af" label={{ value: 'Hours', angle: -90, position: 'insideLeft', fill: '#9ca3af' }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1f2937',
+                    border: '1px solid #374151',
+                    borderRadius: '8px',
+                  }}
+                  formatter={(value, name) => {
+                    if (name === 'durationHours') {
+                      return [`${value} hours`, 'Duration']
+                    }
+                    return [value, name]
+                  }}
+                />
+                <Bar dataKey="durationHours" fill="#8b5cf6" />
+              </BarChart>
             </ResponsiveContainer>
           )}
         </Card>

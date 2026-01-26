@@ -39,6 +39,9 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+        transactions: {
+          orderBy: { createdAt: 'asc' },
+        },
       },
     })
 
@@ -113,17 +116,37 @@ export async function GET(request: NextRequest) {
     playerStats.sort((a, b) => b.netGainLoss - a.netGainLoss)
 
     // Session-by-session data for graphs
-    const sessionData = sessions.map((session) => ({
-      id: session.id,
-      date: session.date,
-      players: session.players.map((p) => ({
-        userId: p.userId,
-        userName: p.user?.name || 'Unknown',
-        buyIns: p.buyInCount * BUY_IN_AMOUNT,
-        cashOut: (p.cashOut || 0) + (p.chipsSold || 0),
-        netResult: (p.cashOut || 0) + (p.chipsSold || 0) - p.buyInCount * BUY_IN_AMOUNT,
-      })),
-    }))
+    const sessionData = sessions.map((session) => {
+      // Calculate total pot (sum of all buy-ins)
+      const totalPot = session.players
+        .filter(p => p.userId !== PIGGY_BANK_USER_ID)
+        .reduce((sum, p) => sum + (p.buyInCount * BUY_IN_AMOUNT) + (p.chipsSold || 0), 0)
+
+      // Calculate session duration from first buy-in to last cash out
+      const buyInTransactions = session.transactions.filter(t => t.type === 'BUY_IN')
+      const cashOutTransactions = session.transactions.filter(t => t.type === 'CASH_OUT')
+
+      let durationMinutes: number | null = null
+      if (buyInTransactions.length > 0 && cashOutTransactions.length > 0) {
+        const firstBuyIn = new Date(buyInTransactions[0].createdAt)
+        const lastCashOut = new Date(cashOutTransactions[cashOutTransactions.length - 1].createdAt)
+        durationMinutes = Math.round((lastCashOut.getTime() - firstBuyIn.getTime()) / (1000 * 60))
+      }
+
+      return {
+        id: session.id,
+        date: session.date,
+        totalPot,
+        durationMinutes,
+        players: session.players.map((p) => ({
+          userId: p.userId,
+          userName: p.user?.name || 'Unknown',
+          buyIns: p.buyInCount * BUY_IN_AMOUNT,
+          cashOut: (p.cashOut || 0) + (p.chipsSold || 0),
+          netResult: (p.cashOut || 0) + (p.chipsSold || 0) - p.buyInCount * BUY_IN_AMOUNT,
+        })),
+      }
+    })
 
     // Calculate running totals for each player over time
     const cumulativeData: { date: string; [key: string]: number | string }[] = []
