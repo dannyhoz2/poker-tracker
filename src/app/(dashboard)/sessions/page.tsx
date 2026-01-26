@@ -5,6 +5,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
+import Modal from '@/components/ui/Modal'
+
+interface User {
+  id: string
+  name: string
+}
 
 interface Session {
   id: string
@@ -25,13 +31,17 @@ interface Session {
 export default function SessionsPage() {
   const router = useRouter()
   const [sessions, setSessions] = useState<Session[]>([])
+  const [users, setUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isStarting, setIsStarting] = useState(false)
   const [filter, setFilter] = useState<'all' | 'active' | 'closed'>('all')
   const [showArchived, setShowArchived] = useState(false)
+  const [isNewSessionModalOpen, setIsNewSessionModalOpen] = useState(false)
+  const [selectedHostLocationId, setSelectedHostLocationId] = useState('')
 
   useEffect(() => {
     fetchSessions()
+    fetchUsers()
   }, [showArchived])
 
   const fetchSessions = async () => {
@@ -47,16 +57,38 @@ export default function SessionsPage() {
     }
   }
 
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('/api/users')
+      const data = await res.json()
+      setUsers(data.users || [])
+    } catch (error) {
+      console.error('Failed to fetch users:', error)
+    }
+  }
+
+  const openNewSessionModal = () => {
+    setSelectedHostLocationId('')
+    setIsNewSessionModalOpen(true)
+  }
+
   const startSession = async () => {
+    if (!selectedHostLocationId) {
+      alert('Please select a host location')
+      return
+    }
+
     setIsStarting(true)
     try {
       const res = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hostLocationId: selectedHostLocationId }),
       })
 
       if (res.ok) {
         const data = await res.json()
+        setIsNewSessionModalOpen(false)
         router.push(`/sessions/${data.session.id}`)
       } else {
         const error = await res.json()
@@ -92,8 +124,7 @@ export default function SessionsPage() {
 
         {!hasActiveSession && (
           <Button
-            onClick={startSession}
-            isLoading={isStarting}
+            onClick={openNewSessionModal}
             className="w-full sm:w-auto"
           >
             Start New Session
@@ -182,6 +213,58 @@ export default function SessionsPage() {
           ))}
         </div>
       )}
+
+      {/* New Session Modal */}
+      <Modal
+        isOpen={isNewSessionModalOpen}
+        onClose={() => setIsNewSessionModalOpen(false)}
+        title="Start New Session"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Where are we playing tonight?
+            </label>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {users.map((user) => (
+                <button
+                  key={user.id}
+                  onClick={() => setSelectedHostLocationId(user.id)}
+                  className={`w-full p-3 rounded-lg text-left transition-colors flex items-center justify-between ${
+                    selectedHostLocationId === user.id
+                      ? 'bg-emerald-700/50 border border-emerald-500'
+                      : 'bg-gray-700 hover:bg-gray-600'
+                  }`}
+                >
+                  <p className="font-medium text-gray-100">{user.name}&apos;s house</p>
+                  {selectedHostLocationId === user.id && (
+                    <svg className="w-5 h-5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setIsNewSessionModalOpen(false)}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={startSession}
+              isLoading={isStarting}
+              disabled={!selectedHostLocationId}
+              className="flex-1"
+            >
+              Start Session
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
