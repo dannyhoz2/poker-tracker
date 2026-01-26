@@ -71,10 +71,11 @@ export async function GET(request: NextRequest) {
         if (playerData) {
           const buyInAmount = playerData.buyInCount * BUY_IN_AMOUNT
           const cashOutAmount = playerData.cashOut || 0
-          const netResult = cashOutAmount - buyInAmount
+          const chipsSoldAmount = playerData.chipsSold || 0
+          const netResult = cashOutAmount + chipsSoldAmount - buyInAmount
 
           totalBuyIns += buyInAmount
-          totalCashOut += cashOutAmount
+          totalCashOut += cashOutAmount + chipsSoldAmount
 
           if (netResult > 0) {
             wins++
@@ -119,8 +120,8 @@ export async function GET(request: NextRequest) {
         userId: p.userId,
         userName: p.user?.name || 'Unknown',
         buyIns: p.buyInCount * BUY_IN_AMOUNT,
-        cashOut: p.cashOut || 0,
-        netResult: (p.cashOut || 0) - p.buyInCount * BUY_IN_AMOUNT,
+        cashOut: (p.cashOut || 0) + (p.chipsSold || 0),
+        netResult: (p.cashOut || 0) + (p.chipsSold || 0) - p.buyInCount * BUY_IN_AMOUNT,
       })),
     }))
 
@@ -136,7 +137,7 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .forEach((session) => {
         session.players.forEach((p) => {
-          const netResult = (p.cashOut || 0) - p.buyInCount * BUY_IN_AMOUNT
+          const netResult = (p.cashOut || 0) + (p.chipsSold || 0) - p.buyInCount * BUY_IN_AMOUNT
           runningTotals[p.userId] = (runningTotals[p.userId] || 0) + netResult
         })
 
