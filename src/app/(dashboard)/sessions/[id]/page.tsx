@@ -776,27 +776,36 @@ export default function SessionPage() {
 
                     {/* Cash out result - shown on the right for cashed out players */}
                     {player.cashOut !== null && (
-                      <div className="text-right">
-                        <p className="font-medium text-gray-100">
-                          ${player.cashOut}
-                          {chipsSold > 0 && (
-                            <span className="text-emerald-400"> +${chipsSold}</span>
-                          )}
-                        </p>
-                        <p
-                          className={`text-sm font-medium ${
-                            netResult! >= 0 ? 'text-emerald-400' : 'text-red-400'
-                          }`}
-                        >
-                          {netResult! >= 0 ? '+' : ''}${netResult}
-                        </p>
+                      <div className="text-right space-y-1">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-xs text-gray-500">Cash Out</span>
+                          <span className="font-medium text-gray-100 min-w-[3rem]">${player.cashOut}</span>
+                        </div>
+                        {chipsSold > 0 && (
+                          <div className="flex items-center justify-end gap-2">
+                            <span className="text-xs text-gray-500">Sold</span>
+                            <span className="font-medium text-emerald-400 min-w-[3rem]">+${chipsSold}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-xs text-gray-500">Net</span>
+                          <span
+                            className={`font-medium min-w-[3rem] ${
+                              netResult! >= 0 ? 'text-emerald-400' : 'text-red-400'
+                            }`}
+                          >
+                            {netResult! >= 0 ? '+' : ''}${netResult}
+                          </span>
+                        </div>
                         {canEdit && isActive && (
-                          <button
+                          <Button
+                            size="sm"
+                            variant="secondary"
                             onClick={() => undoCashOut(player.id)}
-                            className="text-xs text-gray-500 hover:text-gray-300 mt-1"
+                            className="mt-2"
                           >
                             Undo
-                          </button>
+                          </Button>
                         )}
                       </div>
                     )}
