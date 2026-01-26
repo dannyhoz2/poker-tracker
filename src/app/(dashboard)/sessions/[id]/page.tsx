@@ -271,6 +271,29 @@ export default function SessionPage() {
     }
   }
 
+  const undoTransaction = async (transactionId: string, transactionType: string, playerName: string) => {
+    const actionLabel = transactionType === 'BUY_IN' ? 'buy-in' :
+                        transactionType === 'SELL_BUY_IN' ? 'sell' :
+                        transactionType === 'CASH_OUT' ? 'cash out' : 'transaction'
+
+    if (!confirm(`Undo ${playerName}'s ${actionLabel}?`)) return
+
+    try {
+      const res = await fetch(`/api/sessions/${id}/transactions/${transactionId}`, {
+        method: 'DELETE',
+      })
+
+      if (res.ok) {
+        await fetchSession()
+      } else {
+        const error = await res.json()
+        alert(error.error || 'Failed to undo transaction')
+      }
+    } catch (error) {
+      console.error('Failed to undo transaction:', error)
+    }
+  }
+
   const closeSession = async () => {
     if (!confirm('Are you sure you want to close this session?')) return
 
@@ -817,15 +840,13 @@ export default function SessionPage() {
                   {/* Action buttons row - only shown for active players who haven't cashed out */}
                   {player.cashOut === null && canEdit && isActive && (
                     <div className="flex items-center gap-2 flex-wrap">
-                      {player.buyInCount > 0 && (
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          onClick={() => removeBuyIn(player.id, player.user.name)}
-                        >
-                          -$10
-                        </Button>
-                      )}
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => addBuyIn(player.id, player.user.name)}
+                      >
+                        Buy
+                      </Button>
                       {session.players.filter(p => p.id !== player.id && p.cashOut === null).length > 0 && (
                         <Button
                           size="sm"
@@ -835,13 +856,6 @@ export default function SessionPage() {
                           Sell
                         </Button>
                       )}
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => addBuyIn(player.id, player.user.name)}
-                      >
-                        +$10
-                      </Button>
                       <Button
                         size="sm"
                         variant="success"
@@ -876,6 +890,9 @@ export default function SessionPage() {
                     <th className="text-left py-2 px-3 text-sm font-medium text-gray-400">Player</th>
                     <th className="text-left py-2 px-3 text-sm font-medium text-gray-400">Action</th>
                     <th className="text-right py-2 px-3 text-sm font-medium text-gray-400">Amount</th>
+                    {canEdit && isActive && (
+                      <th className="text-right py-2 px-3 text-sm font-medium text-gray-400"></th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -942,6 +959,16 @@ export default function SessionPage() {
                         <td className="py-2 px-3 text-right font-medium">
                           {getAmountDisplay()}
                         </td>
+                        {canEdit && isActive && (
+                          <td className="py-2 px-3 text-right">
+                            <button
+                              onClick={() => undoTransaction(tx.id, tx.type, tx.player.name)}
+                              className="text-xs text-gray-500 hover:text-red-400 transition-colors"
+                            >
+                              Undo
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     )
                   })}
