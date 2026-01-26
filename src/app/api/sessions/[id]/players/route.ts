@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
-import { SESSION_STATUS, PLAYER_TYPE, PIGGY_BANK_CONTRIBUTION, USER_ROLE } from '@/lib/constants'
+import { SESSION_STATUS, PLAYER_TYPE, PIGGY_BANK_CONTRIBUTION, USER_ROLE, BUY_IN_AMOUNT } from '@/lib/constants'
 import cuid from 'cuid'
 
 const PIGGY_BANK_USER_ID = 'piggy-bank'
@@ -117,19 +117,31 @@ export async function POST(
       }
     }
 
-    const player = await prisma.sessionPlayer.create({
-      data: {
-        id: cuid(),
-        sessionId,
-        userId,
-        buyInCount: 1, // Start with one buy-in
-      },
-      include: {
-        user: {
-          select: { id: true, name: true },
+    // Create player and log initial buy-in transaction
+    const [player] = await prisma.$transaction([
+      prisma.sessionPlayer.create({
+        data: {
+          id: cuid(),
+          sessionId,
+          userId,
+          buyInCount: 1, // Start with one buy-in
         },
-      },
-    })
+        include: {
+          user: {
+            select: { id: true, name: true },
+          },
+        },
+      }),
+      prisma.sessionTransaction.create({
+        data: {
+          id: cuid(),
+          sessionId,
+          playerId: userId,
+          type: 'BUY_IN',
+          amount: BUY_IN_AMOUNT,
+        },
+      }),
+    ])
 
     return NextResponse.json({ player })
   } catch (error) {
