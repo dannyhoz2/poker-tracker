@@ -171,14 +171,13 @@ export async function PATCH(
 
       // Use a transaction to update both players and record the transfer
       const result = await prisma.$transaction(async (tx) => {
-        // Update seller: if they have buy-ins, decrement; otherwise add to chipsSold
-        const sellerUpdate = sessionPlayer.buyInCount > 0
-          ? { buyInCount: sessionPlayer.buyInCount - 1 }
-          : { chipsSold: (sessionPlayer.chipsSold || 0) + BUY_IN_AMOUNT }
-
+        // Update seller: add to chipsSold (they're cashing out $10 from the buyer)
+        // The seller keeps their buyInCount - they still have their stake in the game
         const updatedSeller = await tx.sessionPlayer.update({
           where: { id: playerId },
-          data: sellerUpdate,
+          data: {
+            chipsSold: (sessionPlayer.chipsSold || 0) + BUY_IN_AMOUNT,
+          },
           include: {
             user: {
               select: { id: true, name: true },
