@@ -4,7 +4,7 @@
   "description": "Poker Night Tracker - Real-Time Session Management & Statistics App",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma db push --skip-generate && prisma generate && next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "postinstall": "prisma generate",
     "lint": "next lint",
