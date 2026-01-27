@@ -85,6 +85,43 @@ export async function POST(request: NextRequest) {
     })
 
     if (existingUser) {
+      // If it's a managed guest, upgrade them to a full account
+      if (existingUser.isManaged) {
+        const passwordHash = await hashPassword(password)
+        const upgraded = await prisma.user.update({
+          where: { id: existingUser.id },
+          data: {
+            passwordHash,
+            isManaged: false,
+            name, // Update name if changed during registration
+          },
+        })
+
+        const token = generateToken({
+          userId: upgraded.id,
+          email: upgraded.email!,
+          role: upgraded.role,
+        })
+
+        const cookieStore = await cookies()
+        cookieStore.set('auth-token', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24 * 7,
+          path: '/',
+        })
+
+        return NextResponse.json({
+          user: {
+            id: upgraded.id,
+            email: upgraded.email,
+            name: upgraded.name,
+            role: upgraded.role,
+          },
+        })
+      }
+
       return NextResponse.json(
         { error: 'Email already registered' },
         { status: 400 }
@@ -105,7 +142,7 @@ export async function POST(request: NextRequest) {
 
     const token = generateToken({
       userId: user.id,
-      email: user.email,
+      email: user.email!,
       role: user.role,
     })
 

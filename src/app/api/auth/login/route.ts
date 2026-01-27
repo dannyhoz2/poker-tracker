@@ -32,7 +32,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const isValid = await verifyPassword(password, user.passwordHash)
+    if (user.isManaged) {
+      return NextResponse.json(
+        { error: 'This account does not have login credentials' },
+        { status: 401 }
+      )
+    }
+
+    const isValid = await verifyPassword(password, user.passwordHash!)
 
     if (!isValid) {
       return NextResponse.json(
@@ -43,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     const token = generateToken({
       userId: user.id,
-      email: user.email,
+      email: user.email!,
       role: user.role,
     })
 

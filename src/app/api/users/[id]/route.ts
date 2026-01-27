@@ -71,6 +71,7 @@ export async function PATCH(
         playerType: true,
         isActive: true,
         isArchived: true,
+        isManaged: true,
       },
     })
 

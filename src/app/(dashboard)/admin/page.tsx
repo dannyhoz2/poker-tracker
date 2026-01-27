@@ -10,11 +10,12 @@ import Modal from '@/components/ui/Modal'
 
 interface User {
   id: string
-  email: string
+  email: string | null
   name: string
   role: 'ADMIN' | 'PLAYER'
   playerType: 'TEAM' | 'GUEST'
   isArchived: boolean
+  isManaged: boolean
   createdAt: string
 }
 
@@ -46,6 +47,9 @@ export default function AdminPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [editName, setEditName] = useState('')
   const [editEmail, setEditEmail] = useState('')
+  const [isAddGuestOpen, setIsAddGuestOpen] = useState(false)
+  const [guestName, setGuestName] = useState('')
+  const [guestEmail, setGuestEmail] = useState('')
 
   useEffect(() => {
     if (user?.role !== 'ADMIN') {
@@ -211,6 +215,43 @@ export default function AdminPage() {
     }
   }
 
+  const addGuestPlayer = async () => {
+    if (!guestName.trim()) {
+      alert('Please enter a name')
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: guestName.trim(),
+          email: guestEmail.trim() || undefined,
+        }),
+      })
+
+      const data = await res.json()
+      if (res.ok) {
+        await fetchData()
+        closeAddGuestModal()
+      } else {
+        alert(data.error || 'Failed to add guest player')
+      }
+    } catch (error) {
+      console.error('Failed to add guest:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const closeAddGuestModal = () => {
+    setIsAddGuestOpen(false)
+    setGuestName('')
+    setGuestEmail('')
+  }
+
   const closeInviteModal = () => {
     setIsInviteOpen(false)
     setInviteEmail('')
@@ -221,7 +262,7 @@ export default function AdminPage() {
   const openEditUser = (u: User) => {
     setEditingUser(u)
     setEditName(u.name)
-    setEditEmail(u.email)
+    setEditEmail(u.email || '')
     setIsEditUserOpen(true)
   }
 
@@ -233,17 +274,26 @@ export default function AdminPage() {
   }
 
   const updateUserDetails = async () => {
-    if (!editingUser || !editName.trim() || !editEmail.trim()) {
-      alert('Please fill in all fields')
+    if (!editingUser || !editName.trim()) {
+      alert('Please enter a name')
+      return
+    }
+    if (!editingUser.isManaged && !editEmail.trim()) {
+      alert('Please enter an email')
       return
     }
 
     setIsSubmitting(true)
     try {
+      const body: Record<string, string> = { name: editName.trim() }
+      if (editEmail.trim()) {
+        body.email = editEmail.trim()
+      }
+
       const res = await fetch(`/api/users/${editingUser.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editName.trim(), email: editEmail.trim() }),
+        body: JSON.stringify(body),
       })
 
       const data = await res.json()
@@ -322,13 +372,18 @@ export default function AdminPage() {
                   Archived
                 </span>
               )}
+              {u.isManaged && (
+                <span className="px-2 py-0.5 rounded-full bg-gray-600/30 text-gray-400 text-xs">
+                  Managed
+                </span>
+              )}
               {u.id === user?.id && (
                 <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 text-xs">
                   You
                 </span>
               )}
             </div>
-            <p className="text-sm text-gray-400">{u.email}</p>
+            <p className="text-sm text-gray-400">{u.email || 'No email'}</p>
           </div>
         </div>
 
@@ -390,7 +445,10 @@ export default function AdminPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-100">Admin Panel</h1>
-        <Button onClick={() => setIsInviteOpen(true)}>Invite New Player</Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => setIsAddGuestOpen(true)}>Add Guest</Button>
+          <Button onClick={() => setIsInviteOpen(true)}>Invite New Player</Button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -607,7 +665,7 @@ export default function AdminPage() {
           />
           <Input
             type="email"
-            label="Email"
+            label={editingUser?.isManaged ? 'Email (optional)' : 'Email'}
             value={editEmail}
             onChange={(e) => setEditEmail(e.target.value)}
             placeholder="player@example.com"
@@ -626,6 +684,48 @@ export default function AdminPage() {
               className="flex-1"
             >
               Save
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Guest Modal */}
+      <Modal
+        isOpen={isAddGuestOpen}
+        onClose={closeAddGuestModal}
+        title="Add Guest Player"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-400">
+            Create a guest player who can join sessions without signing up.
+          </p>
+          <Input
+            label="Name"
+            value={guestName}
+            onChange={(e) => setGuestName(e.target.value)}
+            placeholder="Guest player's name"
+          />
+          <Input
+            type="email"
+            label="Email (optional)"
+            value={guestEmail}
+            onChange={(e) => setGuestEmail(e.target.value)}
+            placeholder="Optional"
+          />
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={closeAddGuestModal}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={addGuestPlayer}
+              isLoading={isSubmitting}
+              className="flex-1"
+            >
+              Add Guest
             </Button>
           </div>
         </div>

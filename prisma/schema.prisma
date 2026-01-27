@@ -10,13 +10,14 @@ datasource db {
 
 model User {
   id            String    @id @default(cuid())
-  email         String    @unique
+  email         String?   @unique
   name          String
-  passwordHash  String
+  passwordHash  String?
   role          String    @default("PLAYER") // ADMIN, PLAYER
   playerType    String    @default("TEAM") // TEAM, GUEST
   isActive      Boolean   @default(true)
   isArchived    Boolean   @default(false)
+  isManaged     Boolean   @default(false) // true = admin-created guest, cannot log in
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
