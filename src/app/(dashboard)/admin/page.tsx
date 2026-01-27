@@ -246,6 +246,38 @@ export default function AdminPage() {
     }
   }
 
+  const inviteGuestPlayer = async (u: User) => {
+    if (!u.email) {
+      alert('This guest has no email. Please edit the guest to add an email first.')
+      openEditUser(u)
+      return
+    }
+
+    if (!confirm(`Send invitation to ${u.name} (${u.email})?`)) return
+
+    setIsSubmitting(true)
+    try {
+      const res = await fetch('/api/invitations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: u.email, name: u.name }),
+      })
+
+      const data = await res.json()
+      if (res.ok) {
+        setInviteLink(data.inviteLink)
+        setIsInviteOpen(true)
+        await fetchData()
+      } else {
+        alert(data.error || 'Failed to create invitation')
+      }
+    } catch (error) {
+      console.error('Failed to invite guest:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const closeAddGuestModal = () => {
     setIsAddGuestOpen(false)
     setGuestName('')
@@ -395,6 +427,15 @@ export default function AdminPage() {
               onClick={() => openEditUser(u)}
             >
               Edit
+            </Button>
+          )}
+          {u.isManaged && !u.isArchived && (
+            <Button
+              size="sm"
+              variant="success"
+              onClick={() => inviteGuestPlayer(u)}
+            >
+              Invite
             </Button>
           )}
           {u.id !== user?.id && (

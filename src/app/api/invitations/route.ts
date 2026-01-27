@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       where: { email: email.toLowerCase() },
     })
 
-    if (existingUser) {
+    if (existingUser && !existingUser.isManaged) {
       return NextResponse.json(
         { error: 'User with this email already exists' },
         { status: 400 }
