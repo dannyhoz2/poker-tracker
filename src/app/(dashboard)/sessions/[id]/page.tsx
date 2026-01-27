@@ -219,6 +219,25 @@ export default function SessionPage() {
     }
   }
 
+  const removePlayer = async (playerId: string, playerName: string) => {
+    if (!confirm(`Remove ${playerName} from this session? This will undo all their buy-ins and transactions.`)) return
+
+    try {
+      const res = await fetch(`/api/sessions/${id}/players/${playerId}`, {
+        method: 'DELETE',
+      })
+
+      if (res.ok) {
+        await fetchSession()
+      } else {
+        const data = await res.json()
+        alert(data.error || 'Failed to remove player')
+      }
+    } catch (error) {
+      console.error('Failed to remove player:', error)
+    }
+  }
+
   const recordCashOut = async () => {
     if (!selectedPlayer) return
 
@@ -862,6 +881,13 @@ export default function SessionPage() {
                         onClick={() => openCashOut(player)}
                       >
                         Cash Out
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => removePlayer(player.id, player.user.name)}
+                      >
+                        Remove
                       </Button>
                     </div>
                   )}

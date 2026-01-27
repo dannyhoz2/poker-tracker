@@ -293,20 +293,53 @@ export async function DELETE(
 
     const sessionPlayer = await prisma.sessionPlayer.findUnique({
       where: { id: playerId },
+      include: { user: { select: { playerType: true } } },
     })
 
     if (!sessionPlayer || sessionPlayer.sessionId !== sessionId) {
       return NextResponse.json({ error: 'Player not found in session' }, { status: 404 })
     }
 
-    // Only allow removal if no buy-ins
-    if (sessionPlayer.buyInCount > 0) {
+    if (sessionPlayer.cashOut !== null) {
       return NextResponse.json(
-        { error: 'Cannot remove player with buy-ins. Record cash-out first.' },
+        { error: 'Cannot remove a player who has already cashed out' },
         { status: 400 }
       )
     }
 
+    // Reverse piggy bank contribution if team player
+    if (sessionPlayer.user.playerType === 'TEAM') {
+      const piggyBankEntry = await prisma.sessionPlayer.findUnique({
+        where: {
+          sessionId_userId: {
+            sessionId,
+            userId: 'piggy-bank',
+          },
+        },
+      })
+
+      if (piggyBankEntry) {
+        const newAmount = (piggyBankEntry.cashOut || 0) - 1
+        if (newAmount <= 0) {
+          await prisma.sessionPlayer.delete({ where: { id: piggyBankEntry.id } })
+        } else {
+          await prisma.sessionPlayer.update({
+            where: { id: piggyBankEntry.id },
+            data: { cashOut: newAmount },
+          })
+        }
+      }
+    }
+
+    // Delete all transactions for this player in this session
+    await prisma.sessionTransaction.deleteMany({
+      where: {
+        sessionId,
+        playerId: sessionPlayer.userId,
+      },
+    })
+
+    // Delete the session player record
     await prisma.sessionPlayer.delete({
       where: { id: playerId },
     })
