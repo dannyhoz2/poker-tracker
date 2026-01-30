@@ -5,6 +5,298 @@ import { SESSION_STATUS, BUY_IN_AMOUNT, PLAYER_TYPE, HAND_STRENGTH } from '@/lib
 import type { PlayerStats, AsteriskStats, SpecialHandType } from '@/types'
 
 const PIGGY_BANK_USER_ID = 'piggy-bank'
+const BURST_WINDOW_MS = 15 * 60 * 1000 // 15 minutes in milliseconds
+
+interface SessionWithData {
+  id: string
+  date: Date
+  players: Array<{
+    userId: string
+    user: { id: string; name: string }
+    buyInCount: number
+    cashOut: number | null
+    chipsSold: number
+  }>
+  transactions: Array<{
+    id: string
+    type: string
+    playerId: string
+    targetPlayerId: string | null
+    amount: number
+    createdAt: Date
+  }>
+}
+
+function computeBuyInTimingAnalytics(sessions: SessionWithData[], teamUserIds: Set<string>) {
+  // Per-player accumulators
+  const playerData: Record<string, {
+    name: string
+    earlyReBuys: number
+    lateReBuys: number
+    totalReBuys: number
+    velocitySessions: { reBuys: number; hours: number }[]
+    timeToFirstReBuyMinutes: number[]
+    sessionsPlayed: number
+    sessionsWithReBuy: number
+    burstReBuys: number
+    burstEvents: number
+    quarterCounts: { q1: number; q2: number; q3: number; q4: number }[]
+    sellTimings: number[]
+    buyFromOthersTimings: number[]
+    lateNightIndices: number[]
+  }> = {}
+
+  const initPlayer = (userId: string, name: string) => {
+    if (!playerData[userId]) {
+      playerData[userId] = {
+        name,
+        earlyReBuys: 0,
+        lateReBuys: 0,
+        totalReBuys: 0,
+        velocitySessions: [],
+        timeToFirstReBuyMinutes: [],
+        sessionsPlayed: 0,
+        sessionsWithReBuy: 0,
+        quarterCounts: [],
+        burstReBuys: 0,
+        burstEvents: 0,
+        sellTimings: [],
+        buyFromOthersTimings: [],
+        lateNightIndices: [],
+      }
+    }
+  }
+
+  for (const session of sessions) {
+    const txs = session.transactions
+    const buyInTxs = txs.filter(t => t.type === 'BUY_IN')
+    const cashOutTxs = txs.filter(t => t.type === 'CASH_OUT')
+    const sellTxs = txs.filter(t => t.type === 'SELL_BUY_IN')
+
+    if (buyInTxs.length === 0 || cashOutTxs.length === 0) continue
+
+    const sessionStart = new Date(buyInTxs[0].createdAt).getTime()
+    const sessionEnd = new Date(cashOutTxs[cashOutTxs.length - 1].createdAt).getTime()
+    const sessionDuration = sessionEnd - sessionStart
+    if (sessionDuration <= 0) continue
+
+    const sessionMidpoint = sessionStart + sessionDuration / 2
+    const q1End = sessionStart + sessionDuration * 0.25
+    const q2End = sessionStart + sessionDuration * 0.5
+    const q3End = sessionStart + sessionDuration * 0.75
+    const lastQuarterStart = q3End
+
+    // Group buy-in transactions by player
+    const playerBuyIns: Record<string, Date[]> = {}
+    for (const tx of buyInTxs) {
+      if (!teamUserIds.has(tx.playerId)) continue
+      if (!playerBuyIns[tx.playerId]) playerBuyIns[tx.playerId] = []
+      playerBuyIns[tx.playerId].push(new Date(tx.createdAt))
+    }
+
+    // Process each player in this session
+    for (const [playerId, buyIns] of Object.entries(playerBuyIns)) {
+      const playerInSession = session.players.find(p => p.userId === playerId)
+      if (!playerInSession) continue
+
+      const playerName = playerInSession.user?.name || 'Unknown'
+      initPlayer(playerId, playerName)
+      const pd = playerData[playerId]
+      pd.sessionsPlayed++
+
+      // Re-buys = all buy-ins after the first
+      const reBuys = buyIns.slice(1)
+      const reBuyCount = reBuys.length
+
+      if (reBuyCount > 0) {
+        pd.sessionsWithReBuy++
+        pd.totalReBuys += reBuyCount
+
+        // Analytic 1: Early vs Late
+        for (const rb of reBuys) {
+          if (rb.getTime() < sessionMidpoint) {
+            pd.earlyReBuys++
+          } else {
+            pd.lateReBuys++
+          }
+        }
+
+        // Analytic 2: Velocity
+        const playerCashOut = cashOutTxs.find(t => t.playerId === playerId)
+        const playerEnd = playerCashOut ? new Date(playerCashOut.createdAt).getTime() : sessionEnd
+        const playerStart = buyIns[0].getTime()
+        const playTimeHours = (playerEnd - playerStart) / (1000 * 60 * 60)
+        if (playTimeHours >= 0.5) {
+          pd.velocitySessions.push({ reBuys: reBuyCount, hours: playTimeHours })
+        }
+
+        // Analytic 3: Time to first re-buy
+        const minutesToFirst = (reBuys[0].getTime() - buyIns[0].getTime()) / (1000 * 60)
+        pd.timeToFirstReBuyMinutes.push(minutesToFirst)
+
+        // Analytic 4: Tilt/Burst detection
+        let inBurst = false
+        for (let i = 1; i < reBuys.length; i++) {
+          const gap = reBuys[i].getTime() - reBuys[i - 1].getTime()
+          if (gap <= BURST_WINDOW_MS) {
+            if (!inBurst) {
+              // Start of a new burst — count the previous re-buy too
+              pd.burstReBuys++
+              pd.burstEvents++
+              inBurst = true
+            }
+            pd.burstReBuys++
+          } else {
+            inBurst = false
+          }
+        }
+
+        // Analytic 7: Late Night Spending Index
+        const lastQuarterReBuys = reBuys.filter(rb => rb.getTime() >= lastQuarterStart).length
+        const durationHours = sessionDuration / (1000 * 60 * 60)
+        const overallRate = reBuyCount / durationHours
+        if (overallRate > 0 && durationHours >= 1) {
+          const lateRate = lastQuarterReBuys / (0.25 * durationHours)
+          pd.lateNightIndices.push(lateRate / overallRate)
+        }
+      }
+
+      // Analytic 5: Quarter heatmap (all buy-ins, including initial)
+      const qc = { q1: 0, q2: 0, q3: 0, q4: 0 }
+      for (const bi of buyIns) {
+        const t = bi.getTime()
+        if (t < q1End) qc.q1++
+        else if (t < q2End) qc.q2++
+        else if (t < q3End) qc.q3++
+        else qc.q4++
+      }
+      pd.quarterCounts.push(qc)
+    }
+
+    // Analytic 6: Sell timing patterns
+    for (const sell of sellTxs) {
+      const sellTime = new Date(sell.createdAt).getTime()
+      const elapsed = ((sellTime - sessionStart) / sessionDuration) * 100
+
+      // Seller
+      if (teamUserIds.has(sell.playerId)) {
+        const sellerPlayer = session.players.find(p => p.userId === sell.playerId)
+        if (sellerPlayer) {
+          initPlayer(sell.playerId, sellerPlayer.user?.name || 'Unknown')
+          playerData[sell.playerId].sellTimings.push(elapsed)
+        }
+      }
+
+      // Buyer
+      if (sell.targetPlayerId && teamUserIds.has(sell.targetPlayerId)) {
+        const buyerPlayer = session.players.find(p => p.userId === sell.targetPlayerId)
+        if (buyerPlayer) {
+          initPlayer(sell.targetPlayerId, buyerPlayer.user?.name || 'Unknown')
+          playerData[sell.targetPlayerId].buyFromOthersTimings.push(elapsed)
+        }
+      }
+    }
+  }
+
+  // Aggregate results
+  const avg = (arr: number[]) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0
+
+  const allPlayers = Object.entries(playerData)
+
+  // Analytic 1: Timing profiles (min 3 re-buys)
+  const timingProfiles = allPlayers
+    .filter(([, d]) => d.totalReBuys >= 3)
+    .map(([, d]) => ({
+      name: d.name,
+      earlyPct: Math.round((d.earlyReBuys / d.totalReBuys) * 100),
+      latePct: Math.round((d.lateReBuys / d.totalReBuys) * 100),
+      earlyReBuys: d.earlyReBuys,
+      lateReBuys: d.lateReBuys,
+      totalReBuys: d.totalReBuys,
+    }))
+    .sort((a, b) => b.latePct - a.latePct)
+
+  // Analytic 2: Re-buy velocity (min 2 sessions, min 1 re-buy)
+  const reBuyVelocity = allPlayers
+    .filter(([, d]) => d.velocitySessions.length >= 2 && d.totalReBuys >= 1)
+    .map(([, d]) => {
+      const avgVel = avg(d.velocitySessions.map(s => s.reBuys / s.hours))
+      return {
+        name: d.name,
+        velocity: Math.round(avgVel * 100) / 100,
+        totalReBuys: d.totalReBuys,
+        totalHours: Math.round(d.velocitySessions.reduce((s, v) => s + v.hours, 0) * 10) / 10,
+      }
+    })
+    .sort((a, b) => b.velocity - a.velocity)
+
+  // Analytic 3: Time to first re-buy (min 2 sessions with re-buy)
+  const timeToFirstRebuy = allPlayers
+    .filter(([, d]) => d.timeToFirstReBuyMinutes.length >= 2)
+    .map(([, d]) => ({
+      name: d.name,
+      avgMinutes: Math.round(avg(d.timeToFirstReBuyMinutes)),
+      sessionsWithReBuy: d.sessionsWithReBuy,
+      sessionsWithoutReBuy: d.sessionsPlayed - d.sessionsWithReBuy,
+      survivalRate: Math.round(((d.sessionsPlayed - d.sessionsWithReBuy) / d.sessionsPlayed) * 100),
+    }))
+    .sort((a, b) => b.avgMinutes - a.avgMinutes)
+
+  // Analytic 4: Tilt scores (min 4 re-buys)
+  const tiltScores = allPlayers
+    .filter(([, d]) => d.totalReBuys >= 4)
+    .map(([, d]) => ({
+      name: d.name,
+      tiltRate: Math.round((d.burstReBuys / d.totalReBuys) * 100),
+      burstEvents: d.burstEvents,
+      burstReBuys: d.burstReBuys,
+      totalReBuys: d.totalReBuys,
+    }))
+    .sort((a, b) => b.tiltRate - a.tiltRate)
+
+  // Analytic 5: Heatmap (min 3 sessions)
+  const buyInHeatmap = allPlayers
+    .filter(([, d]) => d.quarterCounts.length >= 3)
+    .map(([, d]) => ({
+      name: d.name,
+      q1Avg: Math.round(avg(d.quarterCounts.map(q => q.q1)) * 10) / 10,
+      q2Avg: Math.round(avg(d.quarterCounts.map(q => q.q2)) * 10) / 10,
+      q3Avg: Math.round(avg(d.quarterCounts.map(q => q.q3)) * 10) / 10,
+      q4Avg: Math.round(avg(d.quarterCounts.map(q => q.q4)) * 10) / 10,
+      sessions: d.quarterCounts.length,
+    }))
+
+  // Analytic 6: Sell timing patterns (min 2 sells or buys)
+  const sellTimingPatterns = allPlayers
+    .filter(([, d]) => d.sellTimings.length >= 2 || d.buyFromOthersTimings.length >= 2)
+    .map(([, d]) => ({
+      name: d.name,
+      avgSellPct: d.sellTimings.length > 0 ? Math.round(avg(d.sellTimings)) : null,
+      totalSells: d.sellTimings.length,
+      avgBuyFromOthersPct: d.buyFromOthersTimings.length > 0 ? Math.round(avg(d.buyFromOthersTimings)) : null,
+      totalBuysFromOthers: d.buyFromOthersTimings.length,
+    }))
+
+  // Analytic 7: Late night spending index (min 3 sessions with re-buys)
+  const lateNightSpending = allPlayers
+    .filter(([, d]) => d.lateNightIndices.length >= 3)
+    .map(([, d]) => ({
+      name: d.name,
+      index: Math.round(avg(d.lateNightIndices) * 100) / 100,
+      sessionsAnalyzed: d.lateNightIndices.length,
+    }))
+    .sort((a, b) => b.index - a.index)
+
+  return {
+    timingProfiles,
+    reBuyVelocity,
+    timeToFirstRebuy,
+    tiltScores,
+    buyInHeatmap,
+    sellTimingPatterns,
+    lateNightSpending,
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -339,6 +631,10 @@ export async function GET(request: NextRequest) {
 
     const hostingStats = Object.values(hostingStatsMap).sort((a, b) => b.count - a.count)
 
+    // Compute buy-in timing analytics
+    const teamUserIds = new Set(users.map(u => u.id))
+    const buyInTimingAnalytics = computeBuyInTimingAnalytics(sessions as unknown as SessionWithData[], teamUserIds)
+
     return NextResponse.json({
       year,
       totalSessions,
@@ -349,6 +645,7 @@ export async function GET(request: NextRequest) {
       specialHandsDetails,
       piggyBankTotal,
       hostingStats,
+      buyInTimingAnalytics,
     })
   } catch (error) {
     console.error('Get stats error:', error)

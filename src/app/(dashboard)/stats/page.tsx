@@ -18,6 +18,7 @@ import {
   PieChart,
   Pie,
   Cell,
+  ReferenceLine,
 } from 'recharts'
 
 interface PlayerStats {
@@ -80,6 +81,71 @@ interface SessionData {
   }>
 }
 
+interface TimingProfile {
+  name: string
+  earlyPct: number
+  latePct: number
+  earlyReBuys: number
+  lateReBuys: number
+  totalReBuys: number
+}
+
+interface ReBuyVelocityData {
+  name: string
+  velocity: number
+  totalReBuys: number
+  totalHours: number
+}
+
+interface TimeToFirstRebuyData {
+  name: string
+  avgMinutes: number
+  sessionsWithReBuy: number
+  sessionsWithoutReBuy: number
+  survivalRate: number
+}
+
+interface TiltScoreData {
+  name: string
+  tiltRate: number
+  burstEvents: number
+  burstReBuys: number
+  totalReBuys: number
+}
+
+interface HeatmapData {
+  name: string
+  q1Avg: number
+  q2Avg: number
+  q3Avg: number
+  q4Avg: number
+  sessions: number
+}
+
+interface SellTimingData {
+  name: string
+  avgSellPct: number | null
+  totalSells: number
+  avgBuyFromOthersPct: number | null
+  totalBuysFromOthers: number
+}
+
+interface LateNightData {
+  name: string
+  index: number
+  sessionsAnalyzed: number
+}
+
+interface BuyInTimingAnalytics {
+  timingProfiles: TimingProfile[]
+  reBuyVelocity: ReBuyVelocityData[]
+  timeToFirstRebuy: TimeToFirstRebuyData[]
+  tiltScores: TiltScoreData[]
+  buyInHeatmap: HeatmapData[]
+  sellTimingPatterns: SellTimingData[]
+  lateNightSpending: LateNightData[]
+}
+
 interface StatsData {
   year: number
   totalSessions: number
@@ -90,6 +156,7 @@ interface StatsData {
   specialHandsDetails: SpecialHandDetail[]
   piggyBankTotal: number
   hostingStats: HostingStats[]
+  buyInTimingAnalytics?: BuyInTimingAnalytics
 }
 
 const COLORS = [
@@ -501,6 +568,326 @@ export default function StatsPage() {
           )}
         </Card>
       </div>
+
+      {/* Buy-In Timing Analytics Section */}
+      {stats?.buyInTimingAnalytics && (
+        <>
+          <h2 className="text-xl font-bold text-gray-100 mt-4">Buy-In Timing Analytics</h2>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Analytic 1: Re-Buy Timing Profile */}
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-100 mb-4">
+                Re-Buy Timing: Early vs. Late
+              </h3>
+              {stats.buyInTimingAnalytics.timingProfiles.length === 0 ? (
+                <p className="text-gray-400 text-center py-8">Not enough re-buy data yet</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={Math.max(300, stats.buyInTimingAnalytics.timingProfiles.length * 40)}>
+                  <BarChart data={stats.buyInTimingAnalytics.timingProfiles} layout="vertical" margin={{ left: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis type="number" stroke="#9ca3af" domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                    <YAxis type="category" dataKey="name" stroke="#9ca3af" width={80} tick={{ fontSize: 12 }} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
+                      formatter={((value: number, name: string) => {
+                        const label = name === 'earlyPct' ? 'Early' : 'Late'
+                        return [`${value}%`, label]
+                      }) as never}
+                    />
+                    <Legend formatter={(value) => value === 'earlyPct' ? 'Early (1st half)' : 'Late (2nd half)'} />
+                    <Bar dataKey="earlyPct" stackId="timing" fill="#10b981" />
+                    <Bar dataKey="latePct" stackId="timing" fill="#f59e0b" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </Card>
+
+            {/* Analytic 2: Re-Buy Velocity */}
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-100 mb-4">
+                Re-Buy Velocity (per hour)
+              </h3>
+              {stats.buyInTimingAnalytics.reBuyVelocity.length === 0 ? (
+                <p className="text-gray-400 text-center py-8">Not enough data yet</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={stats.buyInTimingAnalytics.reBuyVelocity} margin={{ bottom: 50 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis dataKey="name" stroke="#9ca3af" angle={-45} textAnchor="end" interval={0} height={70} tick={{ fontSize: 12 }} />
+                    <YAxis stroke="#9ca3af" />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
+                      formatter={((value: number) => [`${value} re-buys/hr`, 'Velocity']) as never}
+                    />
+                    <Bar dataKey="velocity" fill="#ef4444" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Analytic 3: Time to First Re-Buy (Stamina) */}
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-100 mb-4">
+                Stamina: Avg Time to First Re-Buy
+              </h3>
+              {stats.buyInTimingAnalytics.timeToFirstRebuy.length === 0 ? (
+                <p className="text-gray-400 text-center py-8">Not enough re-buy data yet</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={stats.buyInTimingAnalytics.timeToFirstRebuy} margin={{ bottom: 50 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis dataKey="name" stroke="#9ca3af" angle={-45} textAnchor="end" interval={0} height={70} tick={{ fontSize: 12 }} />
+                    <YAxis stroke="#9ca3af" label={{ value: 'Minutes', angle: -90, position: 'insideLeft', fill: '#9ca3af' }} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
+                      formatter={((value: number, _name: string, props: { payload: TimeToFirstRebuyData }) => {
+                        return [`${value} min (${props.payload.survivalRate}% sessions no re-buy)`, 'Stamina']
+                      }) as never}
+                    />
+                    <Bar dataKey="avgMinutes" fill="#06b6d4" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </Card>
+
+            {/* Analytic 4: Tilt Score */}
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-100 mb-4">
+                Tilt Score (Burst Re-Buys)
+              </h3>
+              {stats.buyInTimingAnalytics.tiltScores.length === 0 ? (
+                <p className="text-gray-400 text-center py-8">Not enough re-buy data yet</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={Math.max(300, stats.buyInTimingAnalytics.tiltScores.length * 40)}>
+                  <BarChart data={stats.buyInTimingAnalytics.tiltScores} layout="vertical" margin={{ left: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis type="number" stroke="#9ca3af" domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                    <YAxis type="category" dataKey="name" stroke="#9ca3af" width={80} tick={{ fontSize: 12 }} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
+                      formatter={((value: number, _name: string, props: { payload: TiltScoreData }) => {
+                        return [`${value}% (${props.payload.burstEvents} bursts, ${props.payload.burstReBuys}/${props.payload.totalReBuys} re-buys)`, 'Tilt Rate']
+                      }) as never}
+                    />
+                    <Bar dataKey="tiltRate">
+                      {stats.buyInTimingAnalytics.tiltScores.map((entry, index) => (
+                        <Cell
+                          key={`tilt-${index}`}
+                          fill={entry.tiltRate >= 50 ? '#ef4444' : entry.tiltRate >= 20 ? '#f59e0b' : '#10b981'}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Analytic 6: Chip Transfer Timing */}
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-100 mb-4">
+                Chip Transfer Timing
+              </h3>
+              {stats.buyInTimingAnalytics.sellTimingPatterns.length === 0 ? (
+                <p className="text-gray-400 text-center py-8">Not enough sell data yet</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart
+                    data={stats.buyInTimingAnalytics.sellTimingPatterns}
+                    margin={{ bottom: 50 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis dataKey="name" stroke="#9ca3af" angle={-45} textAnchor="end" interval={0} height={70} tick={{ fontSize: 12 }} />
+                    <YAxis stroke="#9ca3af" domain={[0, 100]} label={{ value: '% of session', angle: -90, position: 'insideLeft', fill: '#9ca3af' }} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
+                      formatter={((value: number | null, name: string) => {
+                        if (value === null || value === undefined) return ['N/A', name]
+                        const label = name === 'avgSellPct' ? 'Avg sell timing' : 'Avg buy-from-others timing'
+                        return [`${value}% into session`, label]
+                      }) as never}
+                    />
+                    <Legend formatter={(value) => value === 'avgSellPct' ? 'Selling chips' : 'Buying from others'} />
+                    <Bar dataKey="avgSellPct" fill="#3b82f6" />
+                    <Bar dataKey="avgBuyFromOthersPct" fill="#8b5cf6" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </Card>
+
+            {/* Analytic 7: Late Night Spending Index */}
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-100 mb-4">
+                Late Night Spending Index
+              </h3>
+              {stats.buyInTimingAnalytics.lateNightSpending.length === 0 ? (
+                <p className="text-gray-400 text-center py-8">Not enough data yet</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={stats.buyInTimingAnalytics.lateNightSpending} margin={{ bottom: 50 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis dataKey="name" stroke="#9ca3af" angle={-45} textAnchor="end" interval={0} height={70} tick={{ fontSize: 12 }} />
+                    <YAxis stroke="#9ca3af" />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
+                      formatter={((value: number) => [
+                        `${value}x ${value > 1 ? '(spends more late)' : value < 1 ? '(disciplined late)' : '(even)'}`,
+                        'Index'
+                      ]) as never}
+                    />
+                    <ReferenceLine y={1} stroke="#6b7280" strokeDasharray="3 3" label={{ value: 'Baseline', fill: '#6b7280', position: 'right' }} />
+                    <Bar dataKey="index">
+                      {stats.buyInTimingAnalytics.lateNightSpending.map((entry, index) => (
+                        <Cell
+                          key={`lni-${index}`}
+                          fill={entry.index > 1 ? '#ef4444' : '#10b981'}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </Card>
+          </div>
+
+          {/* Analytic 5: Buy-In Heatmap Table */}
+          {stats.buyInTimingAnalytics.buyInHeatmap.length > 0 && (
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-100 mb-4">
+                Buy-In Activity by Session Quarter
+              </h3>
+              <p className="text-gray-400 text-sm mb-4">
+                Average buy-ins per quarter of the session (including initial buy-in). Higher intensity = more buy-in activity.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-700">
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Player</th>
+                      <th className="text-center py-3 px-4 text-gray-400 font-medium">Q1 (Early)</th>
+                      <th className="text-center py-3 px-4 text-gray-400 font-medium">Q2</th>
+                      <th className="text-center py-3 px-4 text-gray-400 font-medium">Q3</th>
+                      <th className="text-center py-3 px-4 text-gray-400 font-medium">Q4 (Late)</th>
+                      <th className="text-center py-3 px-4 text-gray-400 font-medium">Sessions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.buyInTimingAnalytics.buyInHeatmap.map((row) => {
+                      const maxVal = Math.max(row.q1Avg, row.q2Avg, row.q3Avg, row.q4Avg)
+                      const getHeatColor = (val: number) => {
+                        if (maxVal === 0) return 'bg-transparent'
+                        const intensity = val / Math.max(maxVal, 2)
+                        if (intensity >= 0.75) return 'bg-red-900/50 text-red-300'
+                        if (intensity >= 0.5) return 'bg-amber-900/50 text-amber-300'
+                        if (intensity > 0.1) return 'bg-emerald-900/50 text-emerald-300'
+                        return 'text-gray-500'
+                      }
+                      return (
+                        <tr key={row.name} className="border-b border-gray-700/50">
+                          <td className="py-3 px-4 text-gray-100 font-medium">{row.name}</td>
+                          <td className={`py-3 px-4 text-center rounded ${getHeatColor(row.q1Avg)}`}>{row.q1Avg}</td>
+                          <td className={`py-3 px-4 text-center rounded ${getHeatColor(row.q2Avg)}`}>{row.q2Avg}</td>
+                          <td className={`py-3 px-4 text-center rounded ${getHeatColor(row.q3Avg)}`}>{row.q3Avg}</td>
+                          <td className={`py-3 px-4 text-center rounded ${getHeatColor(row.q4Avg)}`}>{row.q4Avg}</td>
+                          <td className="py-3 px-4 text-center text-gray-400">{row.sessions}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+
+          {/* Analytic 8: Player Timing Summary Table */}
+          {(() => {
+            const timing = stats.buyInTimingAnalytics
+            // Build summary from all analytics
+            const playerMap: Record<string, {
+              name: string; totalReBuys: number; velocity: string; avgMinToReBuy: string;
+              survivalRate: string; earlyPct: string; latePct: string; tiltRate: string;
+              lateNightIndex: string; sells: number
+            }> = {}
+
+            timing.timingProfiles.forEach(p => {
+              if (!playerMap[p.name]) playerMap[p.name] = { name: p.name, totalReBuys: p.totalReBuys, velocity: '-', avgMinToReBuy: '-', survivalRate: '-', earlyPct: '-', latePct: '-', tiltRate: '-', lateNightIndex: '-', sells: 0 }
+              playerMap[p.name].earlyPct = `${p.earlyPct}%`
+              playerMap[p.name].latePct = `${p.latePct}%`
+              playerMap[p.name].totalReBuys = p.totalReBuys
+            })
+            timing.reBuyVelocity.forEach(p => {
+              if (!playerMap[p.name]) playerMap[p.name] = { name: p.name, totalReBuys: p.totalReBuys, velocity: '-', avgMinToReBuy: '-', survivalRate: '-', earlyPct: '-', latePct: '-', tiltRate: '-', lateNightIndex: '-', sells: 0 }
+              playerMap[p.name].velocity = `${p.velocity}`
+            })
+            timing.timeToFirstRebuy.forEach(p => {
+              if (!playerMap[p.name]) playerMap[p.name] = { name: p.name, totalReBuys: 0, velocity: '-', avgMinToReBuy: '-', survivalRate: '-', earlyPct: '-', latePct: '-', tiltRate: '-', lateNightIndex: '-', sells: 0 }
+              playerMap[p.name].avgMinToReBuy = `${p.avgMinutes}m`
+              playerMap[p.name].survivalRate = `${p.survivalRate}%`
+            })
+            timing.tiltScores.forEach(p => {
+              if (!playerMap[p.name]) playerMap[p.name] = { name: p.name, totalReBuys: p.totalReBuys, velocity: '-', avgMinToReBuy: '-', survivalRate: '-', earlyPct: '-', latePct: '-', tiltRate: '-', lateNightIndex: '-', sells: 0 }
+              playerMap[p.name].tiltRate = `${p.tiltRate}%`
+            })
+            timing.lateNightSpending.forEach(p => {
+              if (!playerMap[p.name]) playerMap[p.name] = { name: p.name, totalReBuys: 0, velocity: '-', avgMinToReBuy: '-', survivalRate: '-', earlyPct: '-', latePct: '-', tiltRate: '-', lateNightIndex: '-', sells: 0 }
+              playerMap[p.name].lateNightIndex = `${p.index}x`
+            })
+            timing.sellTimingPatterns.forEach(p => {
+              if (!playerMap[p.name]) playerMap[p.name] = { name: p.name, totalReBuys: 0, velocity: '-', avgMinToReBuy: '-', survivalRate: '-', earlyPct: '-', latePct: '-', tiltRate: '-', lateNightIndex: '-', sells: 0 }
+              playerMap[p.name].sells = p.totalSells
+            })
+
+            const summaryRows = Object.values(playerMap).sort((a, b) => b.totalReBuys - a.totalReBuys)
+            if (summaryRows.length === 0) return null
+
+            return (
+              <Card>
+                <h3 className="text-lg font-semibold text-gray-100 mb-4">
+                  Buy-In Timing Summary
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-700">
+                        <th className="text-left py-3 px-3 text-gray-400 font-medium">Player</th>
+                        <th className="text-right py-3 px-3 text-gray-400 font-medium">Re-Buys</th>
+                        <th className="text-right py-3 px-3 text-gray-400 font-medium">Re-Buy/Hr</th>
+                        <th className="text-right py-3 px-3 text-gray-400 font-medium">Avg to Re-Buy</th>
+                        <th className="text-right py-3 px-3 text-gray-400 font-medium">Survival</th>
+                        <th className="text-right py-3 px-3 text-gray-400 font-medium">Early %</th>
+                        <th className="text-right py-3 px-3 text-gray-400 font-medium">Late %</th>
+                        <th className="text-right py-3 px-3 text-gray-400 font-medium">Tilt</th>
+                        <th className="text-right py-3 px-3 text-gray-400 font-medium">Late Night</th>
+                        <th className="text-right py-3 px-3 text-gray-400 font-medium">Sells</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {summaryRows.map((row) => (
+                        <tr key={row.name} className="border-b border-gray-700/50 hover:bg-gray-800/50">
+                          <td className="py-3 px-3 text-gray-100 font-medium">{row.name}</td>
+                          <td className="py-3 px-3 text-right text-gray-300">{row.totalReBuys}</td>
+                          <td className="py-3 px-3 text-right text-gray-300">{row.velocity}</td>
+                          <td className="py-3 px-3 text-right text-gray-300">{row.avgMinToReBuy}</td>
+                          <td className={`py-3 px-3 text-right ${row.survivalRate !== '-' && parseInt(row.survivalRate) >= 75 ? 'text-emerald-400' : 'text-gray-300'}`}>{row.survivalRate}</td>
+                          <td className="py-3 px-3 text-right text-emerald-400">{row.earlyPct}</td>
+                          <td className="py-3 px-3 text-right text-amber-400">{row.latePct}</td>
+                          <td className={`py-3 px-3 text-right ${row.tiltRate !== '-' && parseInt(row.tiltRate) >= 50 ? 'text-red-400' : 'text-gray-300'}`}>{row.tiltRate}</td>
+                          <td className={`py-3 px-3 text-right ${row.lateNightIndex !== '-' && parseFloat(row.lateNightIndex) > 1.5 ? 'text-red-400' : 'text-gray-300'}`}>{row.lateNightIndex}</td>
+                          <td className="py-3 px-3 text-right text-gray-300">{row.sells}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )
+          })()}
+        </>
+      )}
 
       {/* Detailed Stats Table */}
       <Card>
