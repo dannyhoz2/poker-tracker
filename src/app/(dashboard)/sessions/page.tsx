@@ -196,7 +196,7 @@ export default function SessionsPage() {
                           day: 'numeric',
                           year: 'numeric',
                         })}
-                        {session.specialHandsCount && session.specialHandsCount > 0 && (
+                        {session.specialHandsCount != null && session.specialHandsCount > 0 && (
                           <span className="text-amber-400 font-bold text-xl ml-2" title={`${session.specialHandsCount} special hand${session.specialHandsCount > 1 ? 's' : ''}`}>
                             {'*'.repeat(session.specialHandsCount)}
                           </span>
