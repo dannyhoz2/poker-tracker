@@ -957,7 +957,12 @@ export default function SessionPage() {
       {/* Transactions Table */}
       {session.transactions && session.transactions.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold text-gray-100 mb-4">Transactions</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-100">Transactions</h2>
+            <span className="text-sm text-gray-400">
+              Total Buy-ins: {totalBuyIns / BUY_IN_AMOUNT}
+            </span>
+          </div>
           <Card>
             <div className="overflow-x-auto">
               <table className="w-full">
