@@ -934,13 +934,12 @@ export default function SessionPage() {
                       >
                         Cash Out
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="danger"
+                      <button
                         onClick={() => removePlayer(player.id, player.user.name)}
+                        className="text-xs text-gray-500 hover:text-red-400 transition-colors ml-1"
                       >
                         Remove
-                      </Button>
+                      </button>
                     </div>
                   )}
 
