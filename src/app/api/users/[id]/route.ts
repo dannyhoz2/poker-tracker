@@ -5,11 +5,11 @@ import { USER_ROLE, PLAYER_TYPE } from '@/lib/constants'
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
   try {
     const currentUser = await getCurrentUser()
-    const { id } = await params
+    const { id } = context.params
 
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -84,11 +84,11 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
   try {
     const currentUser = await getCurrentUser()
-    const { id } = await params
+    const { id } = context.params
 
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

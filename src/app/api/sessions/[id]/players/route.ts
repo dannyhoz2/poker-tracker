@@ -8,11 +8,11 @@ const PIGGY_BANK_USER_ID = 'piggy-bank'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
   try {
     const currentUser = await getCurrentUser()
-    const { id: sessionId } = await params
+    const { id: sessionId } = context.params
 
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

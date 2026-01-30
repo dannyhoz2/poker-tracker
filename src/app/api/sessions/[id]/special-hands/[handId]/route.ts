@@ -5,11 +5,11 @@ import { USER_ROLE } from '@/lib/constants'
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; handId: string }> }
+  context: { params: { id: string; handId: string } }
 ) {
   try {
     const currentUser = await getCurrentUser()
-    const { id, handId } = await params
+    const { id, handId } = context.params
 
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

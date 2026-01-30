@@ -5,11 +5,11 @@ import { SESSION_STATUS, USER_ROLE, BUY_IN_AMOUNT } from '@/lib/constants'
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; transactionId: string }> }
+  context: { params: { id: string; transactionId: string } }
 ) {
   try {
     const currentUser = await getCurrentUser()
-    const { id: sessionId, transactionId } = await params
+    const { id: sessionId, transactionId } = context.params
 
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

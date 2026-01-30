@@ -200,7 +200,7 @@ export default function AdminPage() {
   }
 
   const deactivateUser = async (userId: string) => {
-    if (!confirm('Are you sure you want to deactivate this user?')) return
+    if (!confirm('Are you sure you want to deactivate this user? This will prevent them from logging in.')) return
 
     try {
       const res = await fetch(`/api/users/${userId}`, {
@@ -209,9 +209,13 @@ export default function AdminPage() {
 
       if (res.ok) {
         await fetchData()
+      } else {
+        const data = await res.json()
+        alert(data.error || 'Failed to deactivate user')
       }
     } catch (error) {
       console.error('Failed to deactivate user:', error)
+      alert('Failed to deactivate user. Please try again.')
     }
   }
 

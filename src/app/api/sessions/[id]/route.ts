@@ -2,16 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { SESSION_STATUS, BUY_IN_AMOUNT, USER_ROLE, PLAYER_TYPE } from '@/lib/constants'
+import cuid from 'cuid'
 
 const PIGGY_BANK_USER_ID = 'piggy-bank'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
   try {
     const currentUser = await getCurrentUser()
-    const { id } = await params
+    const { id } = context.params
 
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -99,11 +100,11 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
   try {
     const currentUser = await getCurrentUser()
-    const { id } = await params
+    const { id } = context.params
 
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -123,7 +124,7 @@ export async function PATCH(
     const isHost = session.hostId === currentUser.id
     const isAdmin = currentUser.role === USER_ROLE.ADMIN
 
-    const { action, notes, date, isArchived, hostLocationId } = await request.json()
+    const { action, notes, date, isArchived, hostLocationId, forceClose } = await request.json()
 
     // Admins can perform all session actions, hosts can only modify their own
     if (!isHost && !isAdmin) {
@@ -208,15 +209,6 @@ export async function PATCH(
       // Distributable pot is total buy-ins minus piggy bank contribution
       const distributablePot = totalBuyIns - piggyBankContribution
 
-      if (distributablePot !== effectiveCashOuts) {
-        return NextResponse.json(
-          {
-            error: `Cannot close session: Distributable pot ($${distributablePot}) does not match cash-outs ($${effectiveCashOuts})`,
-          },
-          { status: 400 }
-        )
-      }
-
       const playersWithoutCashOut = realPlayers.filter(
         (p) => p.buyInCount > 0 && p.cashOut === null
       )
@@ -226,6 +218,58 @@ export async function PATCH(
           { error: 'All players must cash out before closing' },
           { status: 400 }
         )
+      }
+
+      if (distributablePot !== effectiveCashOuts) {
+        if (!forceClose) {
+          return NextResponse.json(
+            {
+              error: `Cannot close session: Distributable pot ($${distributablePot}) does not match cash-outs ($${effectiveCashOuts})`,
+            },
+            { status: 400 }
+          )
+        }
+
+        // Force close: absorb the difference into the piggy bank
+        const difference = distributablePot - effectiveCashOuts
+
+        if (piggyBankEntry) {
+          // Update existing piggy bank entry
+          await prisma.sessionPlayer.update({
+            where: { id: piggyBankEntry.id },
+            data: { cashOut: piggyBankContribution + difference },
+          })
+        } else {
+          // Ensure piggy bank user exists
+          let piggyBankUser = await prisma.user.findUnique({
+            where: { id: PIGGY_BANK_USER_ID },
+          })
+
+          if (!piggyBankUser) {
+            piggyBankUser = await prisma.user.create({
+              data: {
+                id: PIGGY_BANK_USER_ID,
+                email: 'piggy-bank@system.local',
+                name: 'Piggy Bank',
+                passwordHash: 'SYSTEM_USER_NO_LOGIN',
+                role: 'PLAYER',
+                playerType: 'GUEST',
+                isActive: false,
+              },
+            })
+          }
+
+          // Create piggy bank entry for this session with the difference
+          await prisma.sessionPlayer.create({
+            data: {
+              id: cuid(),
+              sessionId: id,
+              userId: PIGGY_BANK_USER_ID,
+              buyInCount: 0,
+              cashOut: difference,
+            },
+          })
+        }
       }
 
       const updated = await prisma.session.update({

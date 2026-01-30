@@ -337,6 +337,36 @@ export default function SessionPage() {
     }
   }
 
+  const forceCloseSession = async () => {
+    const diff = distributablePot - effectiveCashOuts
+    const absDiff = Math.abs(diff)
+    const message = diff > 0
+      ? `Session has $${absDiff} surplus (less was cashed out than available). This amount will be added to the piggy bank.\n\nForce close this session?`
+      : `Session is $${absDiff} short (more was cashed out than available). This amount will be deducted from the piggy bank.\n\nForce close this session?`
+
+    if (!confirm(message)) return
+
+    setIsSubmitting(true)
+    try {
+      const res = await fetch(`/api/sessions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'close', forceClose: true }),
+      })
+
+      if (res.ok) {
+        await fetchSession()
+      } else {
+        const error = await res.json()
+        alert(error.error || 'Failed to force close session')
+      }
+    } catch (error) {
+      console.error('Failed to force close session:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const openCashOut = (player: SessionPlayer) => {
     setSelectedPlayer(player)
     setCashOutAmount('')
@@ -691,14 +721,31 @@ export default function SessionPage() {
                 <Button onClick={() => setIsAddPlayerOpen(true)} variant="secondary">
                   Add Player
                 </Button>
-                <Button
-                  onClick={closeSession}
-                  variant="danger"
-                  disabled={!isBalanced || !allCashedOut}
-                  isLoading={isSubmitting}
-                >
-                  Close Session
-                </Button>
+                {isBalanced && allCashedOut ? (
+                  <Button
+                    onClick={closeSession}
+                    variant="danger"
+                    isLoading={isSubmitting}
+                  >
+                    Close Session
+                  </Button>
+                ) : !isBalanced && allCashedOut ? (
+                  <Button
+                    onClick={forceCloseSession}
+                    variant="danger"
+                    isLoading={isSubmitting}
+                    title="Close session with unbalanced pot - difference goes to piggy bank"
+                  >
+                    Force Close
+                  </Button>
+                ) : (
+                  <Button
+                    variant="danger"
+                    disabled
+                  >
+                    Close Session
+                  </Button>
+                )}
               </>
             )}
             {canEdit && (
@@ -758,6 +805,11 @@ export default function SessionPage() {
             ⚠️ Distributable pot (${distributablePot}) and cash-outs (${effectiveCashOuts}) don&apos;t
             match. Difference: ${Math.abs(distributablePot - effectiveCashOuts)}
           </p>
+          {canEdit && allCashedOut && (
+            <p className="text-amber-400/70 text-sm mt-1">
+              You can force close this session. The ${Math.abs(distributablePot - effectiveCashOuts)} difference will be {distributablePot > effectiveCashOuts ? 'added to' : 'deducted from'} the piggy bank.
+            </p>
+          )}
         </Card>
       )}
 
