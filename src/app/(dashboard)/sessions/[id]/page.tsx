@@ -369,7 +369,7 @@ export default function SessionPage() {
 
   const openCashOut = (player: SessionPlayer) => {
     setSelectedPlayer(player)
-    setCashOutAmount('')
+    setCashOutAmount('0')
     setIsCashOutOpen(true)
   }
 

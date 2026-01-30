@@ -266,9 +266,9 @@ export default function StatsPage() {
             <p className="text-gray-400 text-center py-8">No data yet</p>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={leaderboardData}>
+              <BarChart data={leaderboardData} margin={{ bottom: 50 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="name" stroke="#9ca3af" />
+                <XAxis dataKey="name" stroke="#9ca3af" angle={-45} textAnchor="end" interval={0} height={70} tick={{ fontSize: 12 }} />
                 <YAxis stroke="#9ca3af" />
                 <Tooltip
                   contentStyle={{
@@ -337,9 +337,9 @@ export default function StatsPage() {
             <p className="text-gray-400 text-center py-8">No data yet</p>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={winRateData}>
+              <BarChart data={winRateData} margin={{ bottom: 50 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="name" stroke="#9ca3af" />
+                <XAxis dataKey="name" stroke="#9ca3af" angle={-45} textAnchor="end" interval={0} height={70} tick={{ fontSize: 12 }} />
                 <YAxis stroke="#9ca3af" domain={[0, 100]} />
                 <Tooltip
                   contentStyle={{
