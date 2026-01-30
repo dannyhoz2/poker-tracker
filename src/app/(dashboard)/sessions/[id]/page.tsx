@@ -1212,6 +1212,7 @@ export default function SessionPage() {
             label="Cash Out Amount ($)"
             value={cashOutAmount}
             onChange={(e) => setCashOutAmount(e.target.value)}
+            onFocus={(e) => e.target.select()}
             placeholder="0"
             min="0"
             step="1"
