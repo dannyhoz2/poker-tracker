@@ -130,10 +130,27 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm run start` - Start production server
-- `npm run db:push` - Push schema to database
+- `npm run db:push` - Push schema to the **local** database only (never production)
+- `npm run db:migrate` - Apply pending SQL migrations and check the database matches the schema
 - `npm run db:generate` - Generate Prisma client
 - `npm run db:studio` - Open Prisma Studio
 - `npm run db:seed` - Seed database with test data
+
+## Deploying & Database Changes
+
+- **Every push to `main` deploys to production** on Railway automatically (about 2–3 minutes).
+  There's a brief blip when the new version switches in, so **avoid pushing during a live game**.
+- Production uses a **Turso** database. Locally the app uses `prisma/dev.db`, so local testing
+  never touches real data.
+- **Database changes:** never run `prisma db push` or `prisma migrate` against production — the
+  production tables were created by hand and those commands would rebuild them. Instead:
+  1. Edit `prisma/schema.prisma`
+  2. Add a numbered, add-only SQL file in `prisma/migrations-sql/` (new tables or columns only)
+  3. Run `npm run db:migrate` locally and test
+
+  Full steps and rules are in [`prisma/migrations-sql/README.md`](prisma/migrations-sql/README.md).
+- Every deploy runs `npm run db:migrate` first. If a migration fails or one is missing, the deploy
+  stops and the current version stays live.
 
 ## License
 
